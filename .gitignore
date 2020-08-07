@@ -1,0 +1,8 @@
+*.hdf5
+BASESTATE_9.post.json
+
+/third_parties
+/ogs
+/dataset
+/third_parties
+

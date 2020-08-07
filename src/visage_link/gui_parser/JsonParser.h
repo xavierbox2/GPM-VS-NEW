@@ -1,0 +1,176 @@
+#ifndef JSON_PARSER_H_
+#define JSON_PARSER_H_ 1
+
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <map>
+#include <vector>
+#include <iomanip>
+#include <algorithm>
+#include <optional>
+
+#include "gui_parser/UIParamerers.h"
+#include "vs_api/Table.h"
+#include "VisageDeckSimulationOptions.h"
+
+
+#pragma warning(push, 0)
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/istreamwrapper.h"
+
+#include <boost/algorithm/string/case_conv.hpp>
+
+using namespace std;
+using namespace rapidjson;
+
+class JsonParser
+{
+public:
+
+    /*
+    Gets from the ui all the parameters identified as a known visage inoput keyword.
+    Also parses the sediment description and copies into the output_array_names all the
+    identified names. Whatever else, is returned in a map<string,strin>
+    */
+    template<typename T>
+    static optional<T> parse_json_string( string json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names )
+    {
+        auto start = chrono::steady_clock::now( );
+        T ui_params;
+        static const char* kTypeNames[] = { "Null", "bool", "bool", "object", "Array", "string", "number" };
+
+        Document doc;
+        doc.Parse( json );
+
+        if(doc.HasParseError( )) { throw("Input string cannot be parsed"); }
+        if(!doc.HasMember( "SED_SOURCE" )) { throw("Missing SED_SOURCE"); }
+        if(!doc.HasMember( "PARAMETERS" )) { throw("Missing PARAMETERS"); }
+
+        const Value& params = doc["PARAMETERS"];
+        if(!params.HasMember( "SedimentComposition" )) { throw("Missing SedimentComposition"); }
+
+        set<string> results_keywords = WellKnownVisageNames::ResultsArrayNames::All( );
+        set<string> input_keywords = WellKnownVisageNames::VisageInputKeywords::SolverKeywords( );
+        for(Value::ConstMemberIterator itr = params.MemberBegin( ); itr != params.MemberEnd( ); ++itr)
+        {
+            string name = itr->name.GetString( );
+
+            if(kTypeNames[itr->value.GetType( )] == "bool")
+            {
+                istringstream stream( name );
+                std::for_each( istream_iterator<string>( stream ), istream_iterator<string>( ),
+                               [&results_keywords, &output_array_names]( string word )
+                               {if(find( results_keywords.begin( ), results_keywords.end( ), word ) != results_keywords.end( ))
+                {
+                    output_array_names.insert( word );
+                }
+                               } );
+            }
+
+            else if(kTypeNames[itr->value.GetType( )] == "number")
+            {
+
+                float  value = itr->value.GetFloat( );
+                if(find( input_keywords.begin( ), input_keywords.end( ), name ) != input_keywords.end( ))
+                {
+                    visageOptions.set_value( name, to_string( value ) ); cout << "Set visage config keyword " << name << " to " << value << endl;
+                }
+                else ui_params.properties[name] = value;
+            }
+
+            else  if(kTypeNames[itr->value.GetType( )] == "string")
+            {
+                ui_params.names[name] = itr->value.GetString( );
+            }
+        }
+
+        std::map<string,SedimentDescription> sediments = parse_sediments_source( doc );
+        ui_params.sediments = sediments;
+
+        auto end = chrono::steady_clock::now( );
+
+        auto  duration = chrono::duration_cast<chrono::milliseconds>(end - start).count( );
+        cout << "Input file parsed in time: " << duration << " miliseconds" << endl;
+
+        return optional<T>( ui_params );
+    }
+
+    static set<string>  lower_copy( const set<string>& c )
+    {
+        set<string> ret;
+        for(const string& word : c)
+            ret.insert( boost::to_lower_copy( word ) );
+        return ret;
+    }
+
+    static std::map<string, SedimentDescription> parse_sediments_source( Document& doc )
+    {
+        const auto& seds_array = doc["SED_SOURCE"].GetArray( );
+        std::map<string,SedimentDescription> sediments;
+
+        for(size_t n = 0; n < seds_array.Size( ); n++)
+        {    
+            SedimentDescription sed;
+            sed.index = n;
+            const auto& idparm = seds_array[n]["SEDIMENT_ID"];
+            sed.id = idparm.GetString( );
+
+            cout << "Sediment index " << n << endl;
+            const auto& params = seds_array[n]["PARAMETERS"];
+            for(Value::ConstMemberIterator itr = params.MemberBegin( ); itr != params.MemberEnd( ); ++itr)
+            {
+                if(itr->value.GetType( ) == Type::kNumberType)
+                    sed.properties[itr->name.GetString( )] = itr->value.GetFloat( );
+
+                else if(strcmp( itr->name.GetString( ), "StiffnessPorosityMultiplier" ) == 0)
+                {
+                    cout << "Parsing table " << itr->name.GetString( ) << endl;
+                    string cmp = itr->value.GetString( );
+                    int table_index = stoi( cmp.substr( cmp.find_last_of( '/' ) + 1, cmp.size( ) ) );
+                    string field_name = cmp.substr( cmp.find_first_of( '/' ) + 1, cmp.find_last_of( '/' ) - 1 );
+
+                    //compaction table
+                    const Value& table = doc[field_name].GetArray( )[table_index]["VALUES"];
+                    const Value& x = table[0];
+                    const Value& y = table[1];
+                    cout << "size " << x.Size( ) << endl;                                 // porosity e_Mult
+                    Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "porosity", "e_Mult" );
+                    for(size_t n = 0; n < x.Size( ); n++)
+                        t.push_back( x[n].GetFloat( ), y[n].GetFloat( ) );
+                    sed.compaction_table = t;
+                }
+                else { ; }
+            }
+        
+        sediments["SED"+to_string(n+1)] = sed;
+        }
+
+        return sediments;
+    }
+
+    template<typename Itr>
+    static string get_value( Itr& i )
+    {
+        static  auto f0 = []( Itr& itr ) -> string { return "NULL"; };
+        static  auto f1 = []( Itr& itr ) -> string { return to_string( itr->value.GetBool( ) ); };
+        static  auto f2 = []( Itr& itr ) -> string { return to_string( itr->value.GetBool( ) ); };
+        static  auto f3 = []( Itr& itr ) -> string { return  "object"; };
+        static  auto f4 = []( Itr& itr ) -> string { return "object"; };
+        static  auto f5 = []( Itr& itr ) -> string { return itr->value.GetString( ); };
+        static  auto f6 = []( Itr& itr ) -> string { return to_string( itr->value.GetFloat( ) ); };
+
+        static  map<int, function<string( Value::ConstMemberIterator& )>> functions =
+        { {0,f0},{1,f1},{2,f2},{3,f3},{4,f4},{5,f5},{6,f6}
+        };
+
+        return functions[(int)(i->value.GetType( ))]( i );
+    };
+};
+
+#pragma warning(pop)
+
+#endif
