@@ -10,7 +10,6 @@
 #include <sstream>
 #include <functional>
 #include "GpmVsCoupler.h"
-#include "gui_parser/UIParamerers.h"
 
 namespace {
     class sediment_holder
@@ -27,14 +26,17 @@ namespace {
 
         std::shared_ptr<gpm_visage_link> process;
         std::shared_ptr<IConfiguration> config;
+        shared_ptr<IMechanicalPropertiesInitializer> props_model;
     };
 }
 
 extern "C" DLLEXPORT void* gpm_plugin_api_create_plugin_handle( )
 {
     auto ptr = new process_wrapper( );
+    
     ptr->config = std::make_shared< DefaultConfiguration >( );
-    ptr->process = std::make_shared< gpm_visage_link>( ptr->config );
+    ptr->props_model = std::make_shared< MechPropertiesEffectiveMedium >( );
+    ptr->process = std::make_shared< gpm_visage_link>( ptr->config, ptr->props_model );
 
     return ptr;
 }
@@ -52,7 +54,7 @@ extern "C" DLLEXPORT void gpm_plugin_api_delete_plugin_handle( void* handle )
 // Read your input file, skip for now
 extern "C" DLLEXPORT int gpm_plugin_api_read_parameters( void* handle, const char* const parameters_file_name, int name_len, gpm_plugin_api_message_definition * error_msg )
 {
-    cout << "----The input file is " << parameters_file_name << "----" << endl;
+    cout << "Input file: " << parameters_file_name << endl;
 
     int return_code = 0;
     try

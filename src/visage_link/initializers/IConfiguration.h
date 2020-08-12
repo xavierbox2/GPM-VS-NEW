@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "VisageDeckSimulationOptions.h"
+#include "gpm_plugin_description.h"
 
 using namespace std;
 class IConfiguration
@@ -11,13 +13,11 @@ class IConfiguration
 public:
 
 
-    virtual void initialize_vs_options( ) = 0;
+    virtual void initialize_vs_options( VisageDeckSimulationOptions &options ) = 0;
 
-    virtual void initialize_keywords( ) = 0;
+    virtual void initialize_model_extents( VisageDeckSimulationOptions &_visage_options, const gpm_plugin_api_model_definition* model_def )=0;
 
     virtual ~IConfiguration( ) {}
-
-    virtual void talk( ) = 0;
 
     virtual vector<string> OutputArraysNames( ) { return vector<string>( ); }
 };

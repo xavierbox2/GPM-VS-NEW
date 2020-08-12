@@ -11,8 +11,8 @@
 #include <algorithm>
 #include <optional>
 
-#include "gui_parser/UIParamerers.h"
-#include "vs_api/Table.h"
+#include "UIParamerers.h"
+#include "Table.h"
 #include "VisageDeckSimulationOptions.h"
 
 
@@ -140,7 +140,7 @@ public:
                     cout << "size " << x.Size( ) << endl;                                 // porosity e_Mult
                     Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "porosity", "e_Mult" );
                     for(size_t n = 0; n < x.Size( ); n++)
-                        t.push_back( x[n].GetFloat( ), y[n].GetFloat( ) );
+                        t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
                     sed.compaction_table = t;
                 }
                 else { ; }
@@ -148,6 +148,19 @@ public:
         
         sediments["SED"+to_string(n+1)] = sed;
         }
+
+        for(int n =1; n < 10; n++)
+        {
+         string fake_name = "SED"+to_string(n);
+         if( sediments.find(fake_name) == sediments.end())
+         {
+          cout<<"Creating fake sediment "<<fake_name<<endl;
+          sediments[fake_name] = sediments["SED1"];
+          sediments[fake_name].index = n;
+         }
+
+        }
+
 
         return sediments;
     }

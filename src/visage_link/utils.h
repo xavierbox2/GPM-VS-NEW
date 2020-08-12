@@ -19,6 +19,17 @@ void push_back_selected( const Source& source, Target& target, Condition conditi
     }
 }
 
+
+template<typename Source, typename Target, typename Condition, typename Transform>
+void copy_if_transformed( const Source& source, Target& target, Condition c, Transform t)
+{
+    for(auto it = source.begin( ); it != source.end( ); it++)
+    {
+        if( c(*it) == true)
+        target.push_back( t( *it ) );
+    }
+}
+
 template<typename Source, typename Target, typename Func>
 void push_back_transformed( const Source& source, Target& target, Func f )
 {

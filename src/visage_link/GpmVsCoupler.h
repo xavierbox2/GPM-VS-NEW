@@ -16,11 +16,11 @@ namespace fs = std::experimental::filesystem;
 #include <set>
 
 #include "utils.h"
-#include "data_access/AttributeIterator.h"
-#include "initializers/IConfiguration.h"
-#include "initializers/DefaultConfiguration.h"
-#include "gui_parser/JsonParser.h"
-#include "gui_parser/UIParamerers.h"
+#include "AttributeIterator.h"
+#include "IConfiguration.h"
+#include "DefaultConfiguration.h"
+#include "JsonParser.h"
+#include "UIParamerers.h"
 
 #include "Definitions.h"
 #include "Vector3.h"
@@ -36,6 +36,8 @@ namespace fs = std::experimental::filesystem;
 #include "VisageDeckWritter.h"
 #include "VisageDeckSimulationOptions.h"
 #include "VisageDeckWritter.h"
+#include "IMechPropertyModel.h"
+#include "MechProperyModel.h"
 #include "gpm_visage_results.h"
 
 
@@ -44,38 +46,61 @@ using namespace std;
 
 class gpm_visage_link
 {
-    using attr_lookup_type = std::map<std::string, std::vector<Slb::Exploration::Gpm::Api::array_2d_indexer<float>>>;
-    using gpm_attribute = vector<Slb::Exploration::Gpm::Api::array_2d_indexer<float>>;
+//temporal. make it as an injected dependency 
+
+
+
+
 
     struct property_type { std::string name; bool top_layer_only; };
-
-    using  att_iterator = AttributeIterator<gpm_attribute>;
-    using  const_att_iterator = AttributeIterator<gpm_attribute const>;
 
     std::set<string> _output_array_names;
     VisageDeckSimulationOptions _visage_options;
     VisageDeckWritter _deck_writter;
     VisageResultsReader  _vs_results_reader;
     ArrayData _data_arrays;
-    map<string, SedimentDescription> sediments;
+    map<string, SedimentDescription> _sediments;
+
+    shared_ptr<IConfiguration> _config;
+    shared_ptr<IMechanicalPropertiesInitializer> _mech_props_model;
+    map<string, float> _from_visage_unit_conversion;
+    map<string, float> _to_visage_unit_conversion;
+
+
     float _lateral_strain;
     int _time_step;
 
 public:
 
-    gpm_visage_link( shared_ptr<IConfiguration>& config )
+    gpm_visage_link( shared_ptr<IConfiguration>& config, shared_ptr<IMechanicalPropertiesInitializer> props_model )
     {
-        config->talk( );
-        _error = false;
-        _visage_options->set_boundary_condition( new StrainBoundaryCondition( 0, 0.0f ) );//x
-        _visage_options->set_boundary_condition( new StrainBoundaryCondition( 1, 0.0f ) );//y
-        _visage_options->set_boundary_condition( new DisplacementSurfaceBoundaryCondition( 2 ) );//z
-        _visage_options->pinchout_tolerance( ) = 0.001f;
-        _visage_options->path( ) = "D:\\GPMTESTS\\VISAGE_IO";
-        _visage_options->sea_water_density( ) = 1000.00;
-        _visage_options.model_name( ) = "PALEOV3";
+        _config = config;
+        _mech_props_model = props_model;
+
+        _config->initialize_vs_options( _visage_options );
         _gpm_vs_name_map["POR"] = "POROSITY"; //this means "POR" in gpm and "POROSITY" in visage.
         _time_step = -1;
+        _error = false;
+
+        //stress in X files is in KPa and YM in GPa. We will use MPa for the stress and GPa for YM 
+        //cohesion, tensile strength will also be in MPa
+        set<string> names = WellKnownVisageNames::ResultsArrayNames::StressTensor( );
+        set<string> eff_stress_names = WellKnownVisageNames::ResultsArrayNames::EffectiveStressTensor( );
+
+        //std::set_union( begin(names), end(names), eff_stress_names.begin(), eff_stress_names.end(), names.begin());
+        for(string name : names) _from_visage_unit_conversion[name] = 0.001f; //reads in KPa, converts to MPa
+        for(string name : eff_stress_names) _from_visage_unit_conversion[name] = 0.001f; //reads in KPa, converts to MPa
+
+        _to_visage_unit_conversion =
+        {
+         { WellKnownVisageNames::ResultsArrayNames::Stiffness, 1000000.00f}, //all the program is in GPa ->passed as KPa to vs
+         {"COHESION", 1000.00f}, //all the program is in MPa ->passed as KPa to vs
+         {"TENSILE_STRENGTH", 1000.00f}, //all the program is in MPa ->passed as KPa to vs
+         {"DENSITY", 10.00f} //all the program is in gr/cm3 ->passed as KPa rho * g 
+        };
+
+
+
     }
 
     gpm_visage_link* operator->( ) { return this; }
@@ -91,7 +116,6 @@ public:
         return s;
     }
 
-
     bool update_boundary_conditions( );
 
     void increment_step( )
@@ -102,16 +126,19 @@ public:
 
     bool process_ui( string json_string );
 
-    void initialize_model_extents( const gpm_plugin_api_model_definition* model_def );
+    void initialize_model_extents( const gpm_plugin_api_model_definition* model_def )
+    {
+        _config->initialize_model_extents( _visage_options, model_def );
+    }
 
     vector<pair<string, bool>> list_needed_attribute_names( const vector<string>& all_atts ) const;
 
     vector<gpm_visage_link::property_type> list_wanted_attribute_names( bool include_top = true ) const;
 
-    int  update_results( attr_lookup_type& attributes, std::string& error, int step = -1 )
-    {
-        return 0;
-    }
+    int  update_results( attr_lookup_type& attributes, std::string& error, int step = -1 );
+
+
+    bool update_gpm_and_visage_geometris_from_visage_results( map<string, gpm_attribute>  &attributes, string &error );
 
     int  run_timestep( const attr_lookup_type& attributes, std::string& error );
 
@@ -120,7 +147,7 @@ public:
         vector<float> nodal_values;
         for(int k : IntRange( k1, k2 ))
         {
-            auto [it1, it2] = const_att_iterator::surface_range( att, k );
+            auto[it1, it2] = const_att_iterator::surface_range( att, k );
             std::copy( it1, it2, back_inserter( nodal_values ) );
         }
         return nodal_values;
@@ -138,18 +165,18 @@ public:
 
 public:
 
-    void update_mech_props( const attr_lookup_type& attributes, int old_num_surfaces, int new_num_surfaces );
+    void update_mech_props( const attr_lookup_type& atts, int old_num_surfaces, int new_num_surfaces )
+    {
+        _mech_props_model->update_initial_mech_props( atts, _sediments, _visage_options, _data_arrays, old_num_surfaces, new_num_surfaces );
+        _mech_props_model->update_compacted_props( atts, _sediments, _visage_options, _data_arrays);
+    }
 
-    void update_initial_mech_props( const attr_lookup_type& atts, int old_nsurf, int new_nsurf );
-
-    void update_compacted_props( const attr_lookup_type& atts, int old_nsurf, int new_nsurf );
 
     bool update_sea_level( const attr_lookup_type& attributes )
     {
         //read the sea-level surface. This is a constant
         float  sea_level = attributes.at( "SEALEVEL" ).at( 0 )(0, 0);
         _visage_options->sea_level( ) = sea_level;
-        std::cout << "Setting sealevel to " << sea_level << std::endl;
         return true;
     }
 
@@ -166,7 +193,7 @@ private:
     {
         //debug
 
-        auto [ncols, nrows, nsurfaces, total_nodes, total_elements] = _visage_options->geometry( )->get_geometry_description( );
+        auto[ncols, nrows, nsurfaces, total_nodes, total_elements] = _visage_options->geometry( )->get_geometry_description( );
         std::vector<float> nodal_values;
         {
             if(!_data_arrays.contains( name ))

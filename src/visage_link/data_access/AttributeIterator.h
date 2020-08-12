@@ -208,8 +208,13 @@ public:
     static tuple< AttributeIterator, AttributeIterator> surface_range( const ATT_TYPE& att, int surface_index )
     {
         int xy_nodes = att[0].num_cols( ) * att[0].num_rows( );
-        return make_tuple( AttributeIterator( att, xy_nodes * surface_index ), AttributeIterator( att, xy_nodes * (surface_index + 1) ) );
+        return make_tuple( AttributeIterator( const_cast<ATT_TYPE&>(att), xy_nodes * surface_index ), AttributeIterator( const_cast<ATT_TYPE&>(att), xy_nodes * (surface_index + 1) ) );
     }
+
+
+
+ 
+
 
     bool compatible( self_type const& other ) const
     {
@@ -252,5 +257,14 @@ private:
 
     int _element;
 };
+
+using attr_lookup_type = std::map<std::string, std::vector<Slb::Exploration::Gpm::Api::array_2d_indexer<float>>>;
+using gpm_attribute = vector<Slb::Exploration::Gpm::Api::array_2d_indexer<float>>;
+using  att_iterator = AttributeIterator<gpm_attribute>;
+using  const_att_iterator = AttributeIterator<gpm_attribute const>;
+
+
+
+
 
 #endif

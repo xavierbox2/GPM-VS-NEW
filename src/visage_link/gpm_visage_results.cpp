@@ -19,8 +19,6 @@ int  VisageResultsReader::read_result( string file_to_parse, string keyword, Arr
                 float factor = unit_converter->at( keyword );
                 transform( values.begin( ), values.end( ), values.begin( ), [&factor]( float v )->float { return v * factor; } );
             }
-
-            cout << "--values read of " << keyword << " = " << values.size( ) << endl;
             data->set_array( new_name.empty( ) ? keyword : new_name, values );
         }
     }
