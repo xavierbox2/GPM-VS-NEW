@@ -9,7 +9,7 @@
 #include <iostream>
 #include <string>
 
-#include "vs_api/Table.h"
+#include "Table.h"
 
 using namespace std;
 
@@ -57,9 +57,9 @@ public:
 
                 //for(const auto& sediment : ui_params.sediments)
                 //{
-                    for(const auto& ppair : s.properties)
-                        out << setw( 10 ) << ppair.second << " "; cout << endl;
-                //}
+                for(const auto& ppair : s.properties)
+                    out << setw( 10 ) << ppair.second << " "; cout << endl;
+            //}
             }
         }
 
@@ -81,6 +81,9 @@ public:
     map<string, float> properties;
     map<string, string> names;
     map<string, SedimentDescription> sediments;
+
+    Table plasticity_multiplier, strain_function; 
+
 
 };
 

@@ -221,7 +221,7 @@ extern "C" DLLEXPORT int gpm_plugin_api_process_model_timestep( void* handle, gp
     const auto attrs = Slb::Exploration::Gpm::Api::make_array_holders( *params );
     std::string log;
 
-    const int res = ptr->run_timestep( attrs, log );
+    const int res = ptr->run_timestep( attrs, log, params->time );
     return res;
 
     //ptr->update_geometry_from_top_property(attrs);

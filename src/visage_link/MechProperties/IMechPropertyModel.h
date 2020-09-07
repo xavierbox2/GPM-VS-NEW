@@ -44,6 +44,8 @@ public:
         vector<float> value( tot_nodes );
 
         set<string> prop_names = { sediments.at( sed_keys[0] ).property_names( ) }; //"POROSITY", "YOUNGMOD",......etc...")
+        auto [vs_cols, vs_rows, vs_surfaces, vs_total_nodes, vs_total_elements] = options->geometry( ).get_geometry_description( );
+        int offset = (vs_cols - 1) * (vs_rows - 1) * (old_nsurf > 0 ? (old_nsurf - 1) : 0);
         for(string prop : prop_names)//
         {
             fill( value.begin( ), value.end( ), 0.0f );
@@ -53,7 +55,6 @@ public:
 
                 data_arrays.set_array( key, weights );
 
-
                 transform( begin( weights ), end( weights ), begin( weights ), [val = sediments.at( key ).properties.at( prop )]( float& v ){ return v * val; } );
                 for(int n = 0; n < tot_nodes; n++)
                 {
@@ -62,8 +63,7 @@ public:
             }
 
             //value is the volume-weighted average of property = prop (nodal in gpm) 
-            auto[vs_cols, vs_rows, vs_surfaces, vs_total_nodes, vs_total_elements] = options->geometry( ).get_geometry_description( );
-            int offset = (vs_cols - 1) * (vs_rows - 1) * (old_nsurf > 0 ? (old_nsurf - 1) : 0);
+          
 
             auto& data_array = data_arrays[prop];//.get_or_create_array( prop );
             vector<float> ele_values = options->geometry( ).nodal_to_elemental( value );
@@ -75,9 +75,15 @@ public:
             copy( ele_values.begin( ) + offset, ele_values.end( ), data_array.begin( ) + offset );
         }
 
+        //we need to keep a copy of the intial stiffness. 
+        auto &intitial_stiffness = data_arrays[ "Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness ];
+        auto& stiffness = data_arrays[WellKnownVisageNames::ResultsArrayNames::Stiffness];
+        intitial_stiffness.resize( stiffness.size() );
+
+        copy( begin(stiffness) + offset, end(stiffness), begin( intitial_stiffness ) + offset );
     }
 
-    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays ) = 0;
+    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays, const Table& plastic_multiplier ) = 0;
 
     ~IMechanicalPropertiesInitializer( ) {}
 
