@@ -8,8 +8,8 @@
 #include <iterator>
 #include <algorithm>
 
-#include "vs_api/ArrayData.h"
-#include "vs_api/Range.h"
+#include "ArrayData.h"
+#include "Range.h"
 
 using namespace std;
 

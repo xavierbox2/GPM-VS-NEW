@@ -14,6 +14,7 @@ namespace fs = std::experimental::filesystem;
 #include <vector>
 #include <iterator>
 #include <set>
+#include <chrono>
 
 #include "utils.h"
 #include "AttributeIterator.h"
@@ -43,6 +44,28 @@ namespace fs = std::experimental::filesystem;
 
 
 using namespace std;
+class ChronoPoint
+{
+public:
+
+    ChronoPoint( string s = " " )
+    {
+        name = s;
+        start = std::chrono::system_clock::now( );
+    }
+
+    ~ChronoPoint( )
+    {
+        std::chrono::system_clock::time_point end = std::chrono::system_clock::now( );
+        std::cout << "********Elapsed time " << name
+            << " (ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count( )
+            << " (us): " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count( )
+            << endl;
+    }
+
+    string name; std::chrono::system_clock::time_point start;
+};
+
 
 class gpm_visage_link
 {
@@ -65,9 +88,12 @@ class gpm_visage_link
     shared_ptr<IMechanicalPropertiesInitializer> _mech_props_model;
     map<string, float> _from_visage_unit_conversion;
     map<string, float> _to_visage_unit_conversion;
+    
+    Table _plasticity_multiplier, _strain_function;
+    gpm_plugin_api_timespan gpm_time;
 
 
-    float _lateral_strain;
+    //float _lateral_strain;
     int _time_step;
 
 public:
@@ -87,7 +113,6 @@ public:
         set<string> names = WellKnownVisageNames::ResultsArrayNames::StressTensor( );
         set<string> eff_stress_names = WellKnownVisageNames::ResultsArrayNames::EffectiveStressTensor( );
 
-        //std::set_union( begin(names), end(names), eff_stress_names.begin(), eff_stress_names.end(), names.begin());
         for(string name : names) _from_visage_unit_conversion[name] = 0.001f; //reads in KPa, converts to MPa
         for(string name : eff_stress_names) _from_visage_unit_conversion[name] = 0.001f; //reads in KPa, converts to MPa
 
@@ -99,11 +124,18 @@ public:
          {"DENSITY", 10.00f} //all the program is in gr/cm3 ->passed as KPa rho * g 
         };
 
+  
+
+
+        _plasticity_multiplier.append_value(0.0,1.0 );
+        _plasticity_multiplier.append_value( 1.0, 1.0 );
 
 
     }
 
     gpm_visage_link* operator->( ) { return this; }
+
+    void update_compacted_props( attr_lookup_type& attributes );
 
     tuple<int, int, int, int, int> gpm_attribute_sizes( const gpm_attribute& att ) const
     {
@@ -116,7 +148,7 @@ public:
         return s;
     }
 
-    bool update_boundary_conditions( );
+    bool update_boundary_conditions( const gpm_attribute& top );
 
     void increment_step( )
     {
@@ -138,20 +170,29 @@ public:
     int  update_results( attr_lookup_type& attributes, std::string& error, int step = -1 );
 
 
-    bool update_gpm_and_visage_geometris_from_visage_results( map<string, gpm_attribute>  &attributes, string &error );
+    bool update_gpm_and_visage_geometris_from_visage_results( map<string, gpm_attribute>& attributes, string& error );
 
-    int  run_timestep( const attr_lookup_type& attributes, std::string& error );
+    int  run_timestep( const attr_lookup_type& attributes, std::string& error, const gpm_plugin_api_timespan & );
 
     vector<float> get_values( const gpm_attribute& att, int k1 = 0, int k2 = -1 )
     {
         vector<float> nodal_values;
         for(int k : IntRange( k1, k2 ))
         {
-            auto[it1, it2] = const_att_iterator::surface_range( att, k );
+            auto [it1, it2] = const_att_iterator::surface_range( att, k );
             std::copy( it1, it2, back_inserter( nodal_values ) );
         }
         return nodal_values;
     }
+
+    vector<float> get_gpm_heights( const gpm_attribute& att, int k1 = 0 )
+    {
+        vector<float> nodal_values;
+        auto [it1, it2] = const_att_iterator::surface_range( att, k1 );
+        std::copy( it1, it2, back_inserter( nodal_values ) );
+        return nodal_values;
+    }
+
 
     bool  gpm_visage_link::read_visage_results( int last_step, string& error );
 
@@ -168,7 +209,7 @@ public:
     void update_mech_props( const attr_lookup_type& atts, int old_num_surfaces, int new_num_surfaces )
     {
         _mech_props_model->update_initial_mech_props( atts, _sediments, _visage_options, _data_arrays, old_num_surfaces, new_num_surfaces );
-        _mech_props_model->update_compacted_props( atts, _sediments, _visage_options, _data_arrays);
+        _mech_props_model->update_compacted_props( atts, _sediments, _visage_options, _data_arrays, _plasticity_multiplier );
     }
 
 
@@ -193,7 +234,7 @@ private:
     {
         //debug
 
-        auto[ncols, nrows, nsurfaces, total_nodes, total_elements] = _visage_options->geometry( )->get_geometry_description( );
+        auto [ncols, nrows, nsurfaces, total_nodes, total_elements] = _visage_options->geometry( )->get_geometry_description( );
         std::vector<float> nodal_values;
         {
             if(!_data_arrays.contains( name ))

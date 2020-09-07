@@ -72,23 +72,18 @@ public:
         options->use_tables( ) = false;
     }
 
-    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays )
+    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays, const Table &plastic_multiplier  )
         override
     {
         options->use_tables( ) = false;
  
-        update_equivalent_plastic_strain( atts, sediments, options, data_arrays );
-
+ 
         update_porosity( atts, sediments, options, data_arrays );
 
-        update_stiffness( atts, sediments, options,  data_arrays );
+        update_stiffness( atts, sediments, options,  data_arrays, plastic_multiplier );
         
     }
-
-    //based on vs results 
-    void update_equivalent_plastic_strain( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays )
-    {
-    }
+ 
 
     //based on total strain
     void update_porosity( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays )
@@ -101,13 +96,13 @@ public:
         vector<float> & poro = data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Porosity);
         for (auto n : IntRange(0, ezz.size()))
         {
-            float delta = (-exx[n] - eyy[n] - ezz[n]);
-            poro[n] = std::min<float>(0.8f, std::max<float>(0.01f, poro[n] + delta));
+            float delta = -1.0f*(exx[n] + eyy[n] + ezz[n]);
+            poro[n] = std::min<float>(0.8f, std::max<float>(0.025f, poro[n] + delta));
         }
     }
 
     //based on porosity and compaction tables 
-    void update_stiffness( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays )
+    void update_stiffness( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays, const Table &plastic_multiplier )
     {
         vector<string> tmp = data_arrays.array_names( );
         vector<string> sed_keys;//find gpm_names SED1,SED2,...SEDN  
@@ -131,10 +126,27 @@ public:
             }
         }
 
+
+        //we add now a second multiplier, which weakens the rock on the basis of equivalent plastic strain. 
+        //so the final multiplier is the product of two multipliers 
+        vector<float> plastic_factor;
         vector<float>& ym = data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Stiffness );
+        vector<float>& init_ym = data_arrays.get_array( "Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness );
+        
+        if(!options->enforce_elastic())
+        {
+        const vector<float>& eq = data_arrays.at("EQPLSTRAIN");
+        plastic_factor  = plastic_multiplier.get_interpolate( eq );
+        }
+        else
+        {
+            plastic_factor.resize( ym_multiplier.size(),1.0f);
+        }
+      
         for(auto n : IntRange( 0, ym_multiplier.size() ))
         {
-            ym[n] *= ym_multiplier[n];
+           
+            ym[n] = init_ym [n]  * (ym_multiplier[n]  * plastic_factor[n]);
         }
     }
 

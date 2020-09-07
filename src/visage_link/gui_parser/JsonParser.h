@@ -31,13 +31,32 @@ class JsonParser
 {
 public:
 
+    static Table parse_table( Document &doc, Value::ConstMemberIterator &itr)
+    {
+        cout << "Parsing table " << itr->name.GetString( ) << endl;
+        string cmp = itr->value.GetString( );
+        int table_index = stoi( cmp.substr( cmp.find_last_of( '/' ) + 1, cmp.size( ) ) );
+        string field_name = cmp.substr( cmp.find_first_of( '/' ) + 1, cmp.find_last_of( '/' ) - 1 );
+
+        //compaction table
+        const Value& table = doc[field_name].GetArray( )[table_index]["VALUES"];
+        const Value& x = table[0];
+        const Value& y = table[1];
+        cout << "size " << x.Size( ) << endl;                                 // porosity e_Mult
+        Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "strain", "time" );
+        for(size_t n = 0; n < x.Size( ); n++)
+            t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
+
+       return t; 
+    }
+
     /*
     Gets from the ui all the parameters identified as a known visage inoput keyword.
     Also parses the sediment description and copies into the output_array_names all the
     identified names. Whatever else, is returned in a map<string,strin>
     */
-    template<typename T>
-    static optional<T> parse_json_string( string json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names )
+    template<typename T = UIParameters>
+    static optional<T> parse_json_string( string json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names)//, Table &plasticity, Table& strain_function )
     {
         auto start = chrono::steady_clock::now( );
         T ui_params;
@@ -58,16 +77,39 @@ public:
         for(Value::ConstMemberIterator itr = params.MemberBegin( ); itr != params.MemberEnd( ); ++itr)
         {
             string name = itr->name.GetString( );
-
-            if(kTypeNames[itr->value.GetType( )] == "bool")
+            if(strcmp( itr->name.GetString( ), "WEAKENINGFACTOR" ) == 0)
             {
+                ui_params.plasticity_multiplier = parse_table( doc, itr );
+            }
+            else if(strcmp( itr->name.GetString( ), "LateralStrain" ) == 0)
+            {
+                ui_params.strain_function = parse_table( doc, itr );            
+            }
+
+            
+
+
+            else if(kTypeNames[itr->value.GetType( )] == "bool")
+            {
+                bool  value = itr->value.GetBool( );
                 istringstream stream( name );
-                std::for_each( istream_iterator<string>( stream ), istream_iterator<string>( ),
-                               [&results_keywords, &output_array_names]( string word )
-                               {if(find( results_keywords.begin( ), results_keywords.end( ), word ) != results_keywords.end( ))
-                {
-                    output_array_names.insert( word );
-                }
+                std::for_each( istream_iterator<string>( stream ), istream_iterator<string>( ), [value,&results_keywords, &output_array_names, &visageOptions]( string word )
+                               {
+                                   if(word == "enforce_elastic")
+                                   {
+                                       visageOptions.enforce_elastic( ) = value;
+                                   }
+                                   else if(word == "automatic_plastic_config")
+                                   {
+                                       visageOptions.auto_config_plasticity( ) = value;
+                                   }
+                                   else if(find( results_keywords.begin( ), results_keywords.end( ), word ) != results_keywords.end( ))
+                                   {   if(value)
+                                       output_array_names.insert( word );
+                                   }
+                                   else
+                                   { cout<<"Unknown flag "<<word<<" "<<value<<endl;
+                                   }
                                } );
             }
 
@@ -88,13 +130,19 @@ public:
             }
         }
 
-        std::map<string,SedimentDescription> sediments = parse_sediments_source( doc );
+        std::map<string, SedimentDescription> sediments = parse_sediments_source( doc );
         ui_params.sediments = sediments;
 
         auto end = chrono::steady_clock::now( );
 
         auto  duration = chrono::duration_cast<chrono::milliseconds>(end - start).count( );
         cout << "Input file parsed in time: " << duration << " miliseconds" << endl;
+        cout << "These are the compaction tables "<<endl;
+        for( auto &s : sediments)
+        {
+         cout<<s.second.compaction_table<<endl;
+        }
+
 
         return optional<T>( ui_params );
     }
@@ -110,10 +158,10 @@ public:
     static std::map<string, SedimentDescription> parse_sediments_source( Document& doc )
     {
         const auto& seds_array = doc["SED_SOURCE"].GetArray( );
-        std::map<string,SedimentDescription> sediments;
+        std::map<string, SedimentDescription> sediments;
 
         for(size_t n = 0; n < seds_array.Size( ); n++)
-        {    
+        {
             SedimentDescription sed;
             sed.index = n;
             const auto& idparm = seds_array[n]["SEDIMENT_ID"];
@@ -142,22 +190,28 @@ public:
                     for(size_t n = 0; n < x.Size( ); n++)
                         t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
                     sed.compaction_table = t;
-                }
+                }            
+                
                 else { ; }
             }
-        
-        sediments["SED"+to_string(n+1)] = sed;
+
+            sediments["SED" + to_string( n + 1 )] = sed;
         }
 
-        for(int n =1; n < 10; n++)
+
+        cout << "Compaction read for sed 1" << endl;
+        cout << sediments["SED1"].compaction_table << endl;
+
+
+        for(int n = 1; n < 10; n++)
         {
-         string fake_name = "SED"+to_string(n);
-         if( sediments.find(fake_name) == sediments.end())
-         {
-          cout<<"Creating fake sediment "<<fake_name<<endl;
-          sediments[fake_name] = sediments["SED1"];
-          sediments[fake_name].index = n;
-         }
+            string fake_name = "SED" + to_string( n );
+            if(sediments.find( fake_name ) == sediments.end( ))
+            {
+                cout << "Creating fake sediment " << fake_name << endl;
+                sediments[fake_name] = sediments["SED1"];
+                sediments[fake_name].index = n;
+            }
 
         }
 

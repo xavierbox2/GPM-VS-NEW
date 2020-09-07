@@ -9,9 +9,9 @@
 namespace fs = std::experimental::filesystem;
 
 #include <vector>
-#include "vs_api/FileSystemUtils.h"
-#include "vs_api/EclipseReader.h"
-#include "vs_api/ArrayData.h"
+#include "FileSystemUtils.h"
+#include "EclipseReader.h"
+#include "ArrayData.h"
 
 // This process is for demo only
 // in essence it will ask for two properties, which is TOP and POR
