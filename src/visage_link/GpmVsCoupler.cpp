@@ -10,7 +10,8 @@
 #include <thread>
 #include <future>
 #include <cmath>
-///
+#include <filesystem>
+
 #include "Vector3.h"
 #include "Range.h"
 #include "StructuredGrid.h"
@@ -38,7 +39,6 @@ vector<pair<string, bool>> gpm_visage_link::list_needed_attribute_names( const v
 std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribute_names( bool include_top ) const
 {
     std::vector<property_type> atts = { { WellKnownVisageNames::ResultsArrayNames::Stiffness, false },
-
                                         { WellKnownVisageNames::ResultsArrayNames::Porosity , false } };
 
     if(include_top) atts.push_back( { "TOP", false } );
@@ -65,8 +65,9 @@ bool gpm_visage_link::process_ui( string json_string )
     _plasticity_multiplier = params->plasticity_multiplier;
     _strain_function = params->strain_function;
 
-    //_visage_options->enforce_elastic( ) = true;
-    //_lateral_strain = params->properties.at( "LateralStrain" );
+    cout << "\n\nplasticity multiplier " << _plasticity_multiplier << endl;
+
+    cout << "\n\nstrain function " << _strain_function << endl;
 
     return params.has_value( );
 }
@@ -109,15 +110,12 @@ bool gpm_visage_link::update_boundary_conditions( const gpm_attribute& top )//St
     //get the lateral strain from a table;
     float end_time = abs( static_cast<float>(gpm_time.end) );
     float _lateral_strain = _strain_function.get_interpolate( end_time );
-    cout << "imposing boundary strain " << _lateral_strain << " time " << end_time << endl;
 
     StrainBoundaryCondition* long_bc = static_cast<StrainBoundaryCondition*>(_visage_options->get_boundary_condition( long_dir ));
     StrainBoundaryCondition* short_bc = static_cast<StrainBoundaryCondition*>(_visage_options->get_boundary_condition( short_dir ));
     long_bc->strain( ) = _lateral_strain;
     short_bc->strain( ) = 0.0f;
-
-
-
+    cout << "\n\nimposing boundary strain " << long_bc->strain( ) << " time " << end_time << " dir " << long_bc->dir( ) << endl;
 
     return true;
 }
@@ -163,10 +161,10 @@ bool  gpm_visage_link::read_visage_results( int last_step, string& error )
             float vyy = one_third * (-1.0f * exx[n] + 2.0 * eyy[n] - ezz[n]);
             float vzz = one_third * (-1.0f * exx[n] - eyy[n] + 2.0f * ezz[n]);
 
-            float vxy =  (exy[n]*exy[n]  + eyz[n] * eyz[n] + ezx[n] * ezx[n]);
-   
+            float vxy = (exy[n] * exy[n] + eyz[n] * eyz[n] + ezx[n] * ezx[n]);
 
-            eq[n] = a * sqrtf( b * (vxx * vxx + vyy * vyy + vzz * vzz) + three_quaters*vxy );
+
+            eq[n] = a * sqrtf( b * (vxx * vxx + vyy * vyy + vzz * vzz) + three_quaters * vxy );
         }
     }
     return true;
@@ -182,21 +180,21 @@ int  gpm_visage_link::run_visage( string mii_file )
     return ret_code;
 }
 
-
-
 int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::string& log, const gpm_plugin_api_timespan& time_span )
 {
-    shared_ptr<ChronoPoint> timer = make_shared<ChronoPoint>( "run_time_step" );
     std::cout << (!_error ? "[run_timestep] run_timestep counter " + to_string( _time_step ) : "\n\n----skipping simulation of step " + to_string( _time_step ) + "--------\n\n") << endl;
-
     //at present, we dont have a way of stopping the GPM engine when we have an error in VS.
     if(_error) return 1;
 
+    shared_ptr<ChronoPoint> timer = make_shared<ChronoPoint>( "run_time_step" );
+   
     StructuredGrid& geometry = _visage_options->geometry( );
     const gpm_attribute& top = gpm_attributes.at( "TOP" );
     gpm_time = time_span;
 
     int old_num_surfaces = geometry->nsurfaces( ), new_num_surfaces = (int)top.size( );
+
+    auto stop_vs_file_path = [this]( ) ->string {return (filesystem::path( _visage_options.path( ) ) /= filesystem::path( "stop_visage" )).string( ); };  // lambda expression
 
     if(geometry->nsurfaces( ) == 0)//we havent even initialized the vs geometry.It must be the 1st step
     {
@@ -210,7 +208,22 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
 
         _mech_props_model->update_initial_mech_props( gpm_attributes, _sediments, _visage_options, _data_arrays, 0, new_num_surfaces );
         old_num_surfaces = new_num_surfaces;
+
+        try {
+            cout << boolalpha << "stop_visage file was removed? " << (std::remove( stop_vs_file_path( ).c_str( ) ) == 0) << endl;
+        }
+        catch(...) {
+            ;
+        }
     }
+
+    if(std::filesystem::exists( stop_vs_file_path( ) ))
+    {
+        _error = true;
+        return 1;
+    }
+
+
 
     update_boundary_conditions( top );
 
@@ -232,39 +245,8 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
             zabove[n] = zbelow[n] + nodal_thickness[n];
             if(zabove[n] > zmax) zmax = zabove[n];
         }
-        //for(int n : IntRange( 0, zabove.size( ) ))
-        //{zabove[n] = zmax;
-        //}
-
-
-        ////ZABOVE = MAX( ZBELO ) + AVGTHICKNESS? 
-        //float max_below = zbelow[0], avgThickness = 0.0f;
-        //for(int n : IntRange( 0, zbelow.size( ) ))
-        //{  if (zbelow[n]  > max_below ) max_below = zbelow[n];
-        //   avgThickness += nodal_thickness[n];
-        //}  avgThickness /= nodal_thickness.size();
-        //for(int n : IntRange( 0, zabove.size( ) ))
-        //{zabove[n] = max_below + avgThickness;
-        //}
-
-
 
     }
-
-    //    std::transform( cbegin( zbelow ), cend( zbelow ), cbegin( nodal_thickness ), geometry->begin_surface( k ), []( float h1, float dh ) {return h1 + dh; } );
-    //}
-
-    //add the new surface(s) as they come from gpm 
-    //vector<float> nodal_thickness;
-    //for(int k : IntRange( old_num_surfaces, new_num_surfaces ))
-   // {
-    //    geometry->set_num_surfaces( 1 + geometry->nsurfaces( ) ); //old surfaces not modified, new not initialized.
-    //    auto [gpm_begin_top, gpm_end_top] = const_att_iterator::surface_range( top, k );
-    //    auto& ztop = geometry->get_local_depths( k );
-    //    copy( gpm_begin_top, gpm_end_top, ztop.begin() );
-   // }
-
-
 
 
     _mech_props_model->update_initial_mech_props( gpm_attributes, _sediments, _visage_options, _data_arrays, old_num_surfaces, new_num_surfaces );
@@ -287,8 +269,6 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
 
     return _error ? 1 : 0;
 }
-
-
 
 bool gpm_visage_link::update_gpm_and_visage_geometris_from_visage_results( map<string, gpm_attribute>& attributes, string& error )
 {
@@ -340,11 +320,13 @@ bool gpm_visage_link::update_gpm_and_visage_geometris_from_visage_results( map<s
     return true;
 }
 
-
 void   gpm_visage_link::update_compacted_props( attr_lookup_type& attributes )
 {
     _mech_props_model->update_compacted_props( attributes, _sediments, _visage_options, _data_arrays, _plasticity_multiplier );
 }
+
+ 
+
 
 
 int   gpm_visage_link::update_results( attr_lookup_type& attributes, std::string& error, int step )
@@ -377,6 +359,20 @@ int   gpm_visage_link::update_results( attr_lookup_type& attributes, std::string
         else if(_data_arrays.array_size( vs_prop.name ) == geometry.total_elements( ))
         {
             vector<float> nodal_values = StructuredBase::elemental_to_nodal( ncols, nrows, nsurfaces, values );
+
+            if( (vs_prop.name.find("STRAIN") != string::npos) || (vs_prop.name.find( "STRN" ) != string::npos))
+            {
+             //cout<<"Scaling strains by 1E5"<<endl;
+             //times 1e5
+             for_each( begin(nodal_values), end(nodal_values), []( float &v){v*=1.0e5;} );
+            }
+            if(vs_prop.name.find( "EFFSTR" ) != string::npos) 
+            {
+                //cout << "Scaling effective stress by 1E5" << endl;
+                //times 1e5
+                for_each( begin( nodal_values ), end( nodal_values ), []( float& v ) {v *= 1.0e5; } );
+            }
+
             copy( nodal_values.begin( ), nodal_values.end( ), to_gpm );
         }
         else { continue; } //empty values, not computed, etc...etc...       

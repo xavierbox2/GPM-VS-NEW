@@ -88,7 +88,7 @@ class gpm_visage_link
     shared_ptr<IMechanicalPropertiesInitializer> _mech_props_model;
     map<string, float> _from_visage_unit_conversion;
     map<string, float> _to_visage_unit_conversion;
-    
+
     Table _plasticity_multiplier, _strain_function;
     gpm_plugin_api_timespan gpm_time;
 
@@ -124,10 +124,10 @@ public:
          {"DENSITY", 10.00f} //all the program is in gr/cm3 ->passed as KPa rho * g 
         };
 
-  
 
 
-        _plasticity_multiplier.append_value(0.0,1.0 );
+
+        _plasticity_multiplier.append_value( 0.0, 1.0 );
         _plasticity_multiplier.append_value( 1.0, 1.0 );
 
 
@@ -172,7 +172,7 @@ public:
 
     bool update_gpm_and_visage_geometris_from_visage_results( map<string, gpm_attribute>& attributes, string& error );
 
-    int  run_timestep( const attr_lookup_type& attributes, std::string& error, const gpm_plugin_api_timespan & );
+    int  run_timestep( const attr_lookup_type& attributes, std::string& error, const gpm_plugin_api_timespan& );
 
     vector<float> get_values( const gpm_attribute& att, int k1 = 0, int k2 = -1 )
     {
@@ -210,6 +210,10 @@ public:
     {
         _mech_props_model->update_initial_mech_props( atts, _sediments, _visage_options, _data_arrays, old_num_surfaces, new_num_surfaces );
         _mech_props_model->update_compacted_props( atts, _sediments, _visage_options, _data_arrays, _plasticity_multiplier );
+    }
+
+    void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
+    {
     }
 
 

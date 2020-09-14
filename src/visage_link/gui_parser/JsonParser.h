@@ -31,7 +31,7 @@ class JsonParser
 {
 public:
 
-    static Table parse_table( Document &doc, Value::ConstMemberIterator &itr)
+    static Table parse_table( Document& doc, Value::ConstMemberIterator& itr )
     {
         cout << "Parsing table " << itr->name.GetString( ) << endl;
         string cmp = itr->value.GetString( );
@@ -47,7 +47,7 @@ public:
         for(size_t n = 0; n < x.Size( ); n++)
             t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
 
-       return t; 
+        return t;
     }
 
     /*
@@ -56,7 +56,7 @@ public:
     identified names. Whatever else, is returned in a map<string,strin>
     */
     template<typename T = UIParameters>
-    static optional<T> parse_json_string( string json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names)//, Table &plasticity, Table& strain_function )
+    static optional<T> parse_json_string( string json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names )//, Table &plasticity, Table& strain_function )
     {
         auto start = chrono::steady_clock::now( );
         T ui_params;
@@ -83,17 +83,14 @@ public:
             }
             else if(strcmp( itr->name.GetString( ), "LateralStrain" ) == 0)
             {
-                ui_params.strain_function = parse_table( doc, itr );            
+                ui_params.strain_function = parse_table( doc, itr );
             }
-
-            
-
 
             else if(kTypeNames[itr->value.GetType( )] == "bool")
             {
                 bool  value = itr->value.GetBool( );
                 istringstream stream( name );
-                std::for_each( istream_iterator<string>( stream ), istream_iterator<string>( ), [value,&results_keywords, &output_array_names, &visageOptions]( string word )
+                std::for_each( istream_iterator<string>( stream ), istream_iterator<string>( ), [value, &results_keywords, &output_array_names, &visageOptions]( string word )
                                {
                                    if(word == "enforce_elastic")
                                    {
@@ -101,14 +98,16 @@ public:
                                    }
                                    else if(word == "automatic_plastic_config")
                                    {
-                                       visageOptions.auto_config_plasticity( ) = value;
+                                       visageOptions.auto_config_plasticity( ) = !value;
                                    }
                                    else if(find( results_keywords.begin( ), results_keywords.end( ), word ) != results_keywords.end( ))
-                                   {   if(value)
-                                       output_array_names.insert( word );
+                                   {
+                                       if(value)
+                                           output_array_names.insert( word );
                                    }
                                    else
-                                   { cout<<"Unknown flag "<<word<<" "<<value<<endl;
+                                   {
+                                       cout << "Unknown flag " << word << " " << value << endl;
                                    }
                                } );
             }
@@ -137,10 +136,10 @@ public:
 
         auto  duration = chrono::duration_cast<chrono::milliseconds>(end - start).count( );
         cout << "Input file parsed in time: " << duration << " miliseconds" << endl;
-        cout << "These are the compaction tables "<<endl;
-        for( auto &s : sediments)
+        cout << "These are the compaction tables " << endl;
+        for(auto& s : sediments)
         {
-         cout<<s.second.compaction_table<<endl;
+            cout << s.second.compaction_table << endl;
         }
 
 
@@ -190,8 +189,8 @@ public:
                     for(size_t n = 0; n < x.Size( ); n++)
                         t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
                     sed.compaction_table = t;
-                }            
-                
+                }
+
                 else { ; }
             }
 

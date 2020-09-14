@@ -1,4 +1,4 @@
-#ifndef MECH_PROPS_DVT_H_ 
+#ifndef MECH_PROPS_DVT_H_
 #define MECH_PROPS_DVT_H_ 1
 
 #include <algorithm>
@@ -15,10 +15,69 @@
 
 using namespace std;
 
+class MechPropertiesDVT : public IMechanicalPropertiesInitializer
+{
+public:
 
-//class MechPropertiesDVT : public IMechanicalPropertiesInitializer
-//{
-//public:
+    virtual void update_porosity( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays )
+        override
+    {
+        IMechanicalPropertiesInitializer::update_porosity( atts, sediments, options, data_arrays );
+        options->use_tables( ) = true;
+    }
+
+    virtual void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
+        override
+    {
+        IMechanicalPropertiesInitializer::update_initial_mech_props( atts, sediments, options, data_arrays, old_nsurf, new_nsurf );
+        options->use_tables( ) = true;
+    }
+
+    //this actually only updates the porosity but generates a compaction dvt table for visage as a stiffness
+    //multiplier as a function of porosity. The table comes from the json file.
+    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier )
+        override
+    {
+        options->use_tables( ) = true;
+
+        update_porosity( atts, sediments, options, data_arrays );
+
+        //each element will have a field "dvt_table_index", which will be 0,1,2,3....
+        //depending on whether SED0, SED1,....is the most predominant component.
+        vector<string> tmp = data_arrays.array_names( );
+        vector<string> sed_keys;//find gpm_names SED1,SED2,...SEDN
+        for_each( cbegin( tmp ), cend( tmp ), [&sed_keys, key = "SED"]( const auto& name )
+        {if(name.find( key ) != std::string::npos) sed_keys.push_back( name ); } );
+
+        //here sed_keys is SED1, SED2,....SEDN and those keys match sediments.at( sed_name ) and each
+        //hast its own compaction table.
+
+        //for each cell find the prevailing sediment
+        vector<int> prevailing_index( options->geometry( )->total_elements( ), 0 );
+        vector<float> max_concentration( options->geometry( )->total_elements( ), 0.0f );
+
+        int index = 0;
+        for(const string& sed_name : sed_keys)
+        {
+            vector<float> sed_concentration = options->geometry( )->nodal_to_elemental( data_arrays.get_array( sed_name ) );
+
+            for(auto n : IntRange( 0, sed_concentration.size( ) ))
+            {
+                if(sed_concentration[n] > max_concentration[n])
+                {
+                    max_concentration[n] = sed_concentration[n];
+                    prevailing_index[n] = index;
+                }
+            }
+
+            options.add_table( index, sediments.at( sed_name ).compaction_table );
+            index += 1;
+        }
+
+        auto& visage_data = data_arrays.get_or_create_array( "dvt_table_index", 0, prevailing_index.size( ) );
+        copy( prevailing_index.begin( ), prevailing_index.end( ), visage_data.begin( ) );
+    }
+
 //
 //
 //    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays )
@@ -26,11 +85,11 @@ using namespace std;
 //    {
 //
 //    /*
-//        vector<string> sed_keys = {}; //SED1,SED2,...SEDN  
+//        vector<string> sed_keys = {}; //SED1,SED2,...SEDN
 //        for_each( cbegin( atts ), cend( atts ), [&sed_keys, key = "SED"]( const auto& att )
 //        {if(att.first.find( key ) != std::string::npos) sed_keys.push_back( att.first ); } );
 //
-//        //compaction tables for each element -> the one for sediment of highest concentration there. 
+//        //compaction tables for each element -> the one for sediment of highest concentration there.
 //
 //        options->use_tables( ) = true;
 //        for(int n : IntRange( 0, sed_keys.size( ) )) options.add_table( n, sediments[sed_keys[n]].compaction_table );
@@ -57,102 +116,101 @@ using namespace std;
 //    }
 //
 //    */
-//};
-
+};
 
 class MechPropertiesEffectiveMedium : public IMechanicalPropertiesInitializer
 {
 public:
-
-    virtual void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays, int old_nsurf, int new_nsurf )
+    virtual void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
         override
     {
-
         IMechanicalPropertiesInitializer::update_initial_mech_props( atts, sediments, options, data_arrays, old_nsurf, new_nsurf );
         options->use_tables( ) = false;
     }
 
-    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays, const Table &plastic_multiplier  )
+    virtual void update_porosity( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays )
+    {
+        IMechanicalPropertiesInitializer::update_porosity( atts, sediments, options, data_arrays );
+        options->use_tables( ) = false;
+    }
+
+    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier )
         override
     {
         options->use_tables( ) = false;
- 
- 
+
         update_porosity( atts, sediments, options, data_arrays );
 
-        update_stiffness( atts, sediments, options,  data_arrays, plastic_multiplier );
-        
-    }
- 
-
-    //based on total strain
-    void update_porosity( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays )
-    {
-        //the total volumetric strain: assume it is cummulative.
-        vector<float>& exx = data_arrays.get_array( "STRAINXX" );
-        vector<float>& eyy = data_arrays.get_array( "STRAINYY" );
-        vector<float>& ezz = data_arrays.get_array( "STRAINZZ" );
-
-        vector<float> & poro = data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Porosity);
-        for (auto n : IntRange(0, ezz.size()))
-        {
-            float delta = -1.0f*(exx[n] + eyy[n] + ezz[n]);
-            poro[n] = std::min<float>(0.8f, std::max<float>(0.025f, poro[n] + delta));
-        }
+        update_stiffness( atts, sediments, options, data_arrays, plastic_multiplier );
     }
 
-    //based on porosity and compaction tables 
-    void update_stiffness( const attr_lookup_type& atts, map<string, SedimentDescription> &sediments, VisageDeckSimulationOptions &options, ArrayData &data_arrays, const Table &plastic_multiplier )
+    ////based on total strain
+    //void update_porosity( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays )
+    //{
+    //    //the total volumetric strain: assume it is cummulative.
+    //    vector<float>& exx = data_arrays.get_array( "STRAINXX" );
+    //    vector<float>& eyy = data_arrays.get_array( "STRAINYY" );
+    //    vector<float>& ezz = data_arrays.get_array( "STRAINZZ" );
+
+    //    vector<float>& poro = data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Porosity );
+    //    for(auto n : IntRange( 0, ezz.size( ) ))
+    //    {
+    //        float delta = -1.0f * (exx[n] + eyy[n] + ezz[n]);
+    //        poro[n] = std::min<float>( 0.8f, std::max<float>( 0.025f, poro[n] + delta ) );
+    //    }
+    //}
+
+    //based on porosity and compaction tables
+    void update_stiffness( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier )
     {
         vector<string> tmp = data_arrays.array_names( );
-        vector<string> sed_keys;//find gpm_names SED1,SED2,...SEDN  
+        vector<string> sed_keys;//find gpm_names SED1,SED2,...SEDN
         for_each( cbegin( tmp ), cend( tmp ), [&sed_keys, key = "SED"]( const auto& name )
         {if(name.find( key ) != std::string::npos) sed_keys.push_back( name ); } );
 
-        vector<float> ym_multiplier( options->geometry()->total_elements(), 0.0f ); //volume-weighted stiffness-porosity multiplier 
-        for(const string &sed_name : sed_keys)
+        vector<float> ym_multiplier( options->geometry( )->total_elements( ), 0.0f ); //volume-weighted stiffness-porosity multiplier
+        for(const string& sed_name : sed_keys)
         {
-            vector<float> vs_elem_concent = options->geometry( )->nodal_to_elemental( data_arrays.get_array(sed_name)  );
-            auto &stiffness_table = sediments.at( sed_name ).compaction_table;
+            vector<float> vs_elem_concent = options->geometry( )->nodal_to_elemental( data_arrays.get_array( sed_name ) );
+            auto& stiffness_table = sediments.at( sed_name ).compaction_table;
 
             vector<float> avg_multiplier = stiffness_table.get_interpolate( data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Porosity ) );
             transform( begin( vs_elem_concent ), end( vs_elem_concent ), begin( avg_multiplier ), begin( avg_multiplier ),
-            []( float c, float m ) { return m * c; } );
+                       []( float c, float m ) { return m * c; } );
 
-             //= Emult(phi,SED1)w1 + Emult(phi,SED2)w2 + ....from surfaces [0, surface old_num )
-            for(auto n : IntRange( 0, ym_multiplier.size() ))
+                        //= Emult(phi,SED1)w1 + Emult(phi,SED2)w2 + ....from surfaces [0, surface old_num )
+            for(auto n : IntRange( 0, ym_multiplier.size( ) ))
             {
                 ym_multiplier[n] += avg_multiplier[n];
             }
         }
 
-
-        //we add now a second multiplier, which weakens the rock on the basis of equivalent plastic strain. 
-        //so the final multiplier is the product of two multipliers 
+        //we add now a second multiplier, which weakens the rock on the basis of equivalent plastic strain.
+        //so the final multiplier is the product of two multipliers
         vector<float> plastic_factor;
         vector<float>& ym = data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Stiffness );
         vector<float>& init_ym = data_arrays.get_array( "Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness );
-        
-        if(!options->enforce_elastic())
+
+        if(!options->enforce_elastic( ))
         {
-        const vector<float>& eq = data_arrays.at("EQPLSTRAIN");
-        plastic_factor  = plastic_multiplier.get_interpolate( eq );
+            cout << "\n\nConditions are not elastic" << endl;
+            const vector<float>& eq = data_arrays.at( "EQPLSTRAIN" );
+            plastic_factor = plastic_multiplier.get_interpolate( eq );
+
+            cout << "\n\nMin plastic factor" << *std::min_element( plastic_factor.begin( ), plastic_factor.end( ) ) << endl;
+            cout << "\n\nMax plastic factor" << *std::max_element( plastic_factor.begin( ), plastic_factor.end( ) ) << endl;
         }
         else
         {
-            plastic_factor.resize( ym_multiplier.size(),1.0f);
+            cout << "\n\nConditions ARE elastic" << endl;
+            plastic_factor.resize( ym_multiplier.size( ), 1.0f );
         }
-      
-        for(auto n : IntRange( 0, ym_multiplier.size() ))
+
+        for(auto n : IntRange( 0, ym_multiplier.size( ) ))
         {
-           
-            ym[n] = init_ym [n]  * (ym_multiplier[n]  * plastic_factor[n]);
+            ym[n] = init_ym[n] * (ym_multiplier[n] * plastic_factor[n]);
         }
     }
-
-
-
 };
 
-#endif 
-
+#endif
