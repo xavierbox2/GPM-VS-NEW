@@ -1,0 +1,26 @@
+{
+	"id": "ReactiveTransportProcess",
+	"process_impl_dll": "gpm_reactivetransport_plugin",
+	"name": "Reactive transport",
+	"description": "This process models reactive transport",
+	"version": "1.0.0.0",
+	"license": "None",
+	"author": "JT",
+  "novalue": 1e-12,
+	"builtin": false,
+	"processinput": {
+		"parameters": [{
+				"parametertype": "StringConstant",
+				"name": "Output file name",
+				"id": "Output",
+				"description": "Output file name"
+			},
+			{
+				"parametertype": "Boolean",
+				"id": "Ascii",
+				"name": "Ascii format",
+				"description": "Use ascii or binary format"
+			}
+		]
+	}
+}

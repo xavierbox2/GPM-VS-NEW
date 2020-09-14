@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://json-schema.org/draft-07/schema#",
+  "title": "GPM sediment input",
+  "description": "Data input to GPM",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "VERSION",
+    "SCHEMA_VERSION",
+    "SEDIMENTS",
+    "PARAMETERS"
+  ],
+  "properties": {
+    "VERSION": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "SCHEMA_VERSION": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "ARRAY_2D": {
+      "$ref": "#/definitions/3d_float_array"
+    },
+    "SEDIMENTS": {
+      "$ref": "#/definitions/sediment_list"
+    },
+    "PARAMETERS": {
+      "$ref": "#/definitions/process_parameters"
+    }
+  },
+  "definitions": {
+    "3d_float_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/2d_float_array"
+      }
+    },
+    "2d_float_array": {
+      "type": "object",
+      "required": [
+        "NAME",
+        "VALUES"
+      ],
+      "properties": {
+        "NAME": {
+          "type": "string"
+        },
+        "VALUES": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "array_2d_def": {
+      "type": "string",
+      "pattern": "^\\/ARRAY_2D\\/[0-9]+$"
+    },
+    "sediment_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "Id",
+          "Diameter"
+        ],
+        "properties": {
+          "Name": {
+            "type": "string"
+          },
+          "Id": {
+            "type": "string"
+          },
+          "Diameter": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "Density": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "InitialPorosity": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "InitialPermeability": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "CompactedPorosity": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "CompactedPermeability": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "Compaction": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "PermeabilityAniostropy": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "Transportability": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ErodabilityCoefficient": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ErodabilityFunction": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "SedimentTransformation": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "InplaceTransformationCoefficient": {
+            "type": "number",
+            "minimum": 0
+          },
+          "InplaceTransformation": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "process_parameters": {
+      "type": "object",
+      "required": [
+        "Sediments"
+      ],
+      "properties": {
+        "Sediments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\/SEDIMENTS\\/[0-9]+$"
+          }
+        }
+      }
+    }
+  }
+}

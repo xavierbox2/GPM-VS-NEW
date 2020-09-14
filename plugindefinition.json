@@ -1,0 +1,269 @@
+{
+  "id": "Geomechanics",
+  "process_impl_dll": "simple_plugin_process",
+  "name": "Geomechanics",
+  "description": "Geomechanical simulation of model",
+  "novalue": 1E-12,
+  "version": "2.0.0.0",
+  "author": "Schlumberger",
+  "builtin": false,
+  "license": "None",
+  "processinput": {
+    "schema_version": "1.0.0.0",
+    "parameters": [
+		   
+	 
+	  {
+        "parametertype": "SelectionList",
+        "id": "MaterialModel",
+        "name": "Material model",
+		  "defaultvalue": "Mohr-Coulomb",
+        "items": ["Mohr-Coulomb", "Cap Model" ]
+      },
+	  			
+
+	  		  	  {
+                "parametertype": "Function",
+                "id": "LateralStrain",
+                "name": "Lateral strain",
+                "description": "half",
+				"supportconstants": false,
+				"xtemplate": [ "General" ],
+                "ytemplate": [ "General" ]
+              } ,
+			  			{
+				"parametertype": "DoubleConstant", "name": "Maximum cohesion change after failure", "id": "ResidualCohesion",
+				"description": "Maximum cohesion change after failure",
+				"template": "General","defaultvalue": 100.0,
+				"validationrules": [
+				   {"function": "get_constant","operator": ">","constraint": "0.01","errorMessage": "Residual Cohesion must be in the range [0.01,1.0]"},
+				   {"function": "get_constant","operator": "<","constraint": "1000.0","errorMessage": "Residual Cohesion must be in the range [0.01,1000.0]"}	  
+				   ]
+			},
+			  
+	  	        {
+            "parametertype": "SedimentSource",
+            "id": "SedimentComposition",
+            "name": "Sediment",
+            "parameters": 
+			[
+              {
+                "parametertype": "DoubleConstant",
+                "id": "YOUNGMOD", 
+                "name": "Init. Youngs Mod (GPa)",
+                "description": "half",
+				"defaultvalue" : 10.0,
+	 
+              },
+			  {
+			    "parametertype": "DoubleConstant",
+                "id": "POROSITY", 
+                "name": "Init. Porosity",
+                "description": "half",
+				"defaultvalue" : 0.35
+              }, 
+			  {
+                "parametertype": "DoubleConstant",
+                "id": "POISSONR",
+                "name": "PoissonR",
+                "description": "half",
+				"defaultvalue" : 0.3
+              },
+			  {
+                "parametertype": "DoubleConstant",
+                "id": "DENSITY",
+                "name": "Density (gr/cm3)",
+                "description": "half",
+				"defaultvalue" : 2.4
+              },	  
+			  {
+                "parametertype": "DoubleConstant",
+                "id": "Attys",
+                "name": "Attys Coeff",
+                "description": "half",
+				"defaultvalue" : 1.0
+              },
+			  {
+                "parametertype": "DoubleConstant",
+                "id": "COHESION",
+                "name": "Cohesion (MPa)",
+                "description": "half",
+				"defaultvalue" : 10.0
+              },
+			  {
+                "parametertype": "DoubleConstant",
+                "id": "TENSILE_STRENGTH",
+                "name": "Tensile (MPa)",
+                "description": "half",
+				"defaultvalue" : 1.0
+              },
+			  {
+                "parametertype": "DoubleConstant",
+                "id": "FRICTION",
+                "name": "Friction (deg)",
+                "description": "half",
+				"defaultvalue" : 30.0
+              },
+			  			  {
+                "parametertype": "DoubleConstant",
+                "id": "DILATION",
+                "name": "Dilation (deg)",
+                "description": "half",
+				"defaultvalue" : 15.0
+              },
+			  			  			  {
+                "parametertype": "DoubleConstant",
+                "id": "HARDENING",
+                "name": "Hardening",
+                "description": "half",
+				"defaultvalue" : -0.005
+              },
+			  	  {
+                "parametertype": "Function",
+                "id": "StiffnessPorosityMultiplier",
+                "name": "Stiff-Poro mult",
+                "description": "half",
+				"supportconstants": false,
+				"xtemplate": [ "General" ],
+                "ytemplate": [ "General" ]
+              } 
+            ]
+          },
+		  
+	  
+	  
+	  
+	  
+	  
+	  
+		  
+		{  
+		"parametertype": "Boolean",			
+        "id":  "enforce_elastic",
+        "name": "Run elastic simulation",
+		"defaultvalue": false,
+        "description": "Instruct the solver to operate in elastic mode"
+        },
+		    {
+				"parametertype": "Function",
+				"id": "WEAKENINGFACTOR",
+				"name": "Weakening",
+				"description": "half",
+				"supportconstants": false,
+				"xtemplate": [ "General" ],
+				"ytemplate": [ "General" ]
+			} ,
+	    
+		{  
+		"parametertype": "Boolean",			
+        "id": "EFFSTRXX  EFFSTRYY EFFSTRZZ  EFFSTRXY EFFSTRYZ EFFSTRZX ",
+        "name": "Export effective stress tensor",
+		"defaultvalue": false,
+        "description": "Display the results of the full stress tensor (TOTSTRXX, TOTSTRYY,...)"
+        },
+	  
+	    {  
+		"parametertype": "Boolean",			
+        "id": "TOTSTRXX  TOTSTRYY TOTSTRZZ  TOTSTRXY TOTSTRYZ TOTSTRZX ",
+        "name": "Export total stress tensor",
+		"defaultvalue": false,
+        "description": "Display the results of the full stress tensor (TOTSTRXX, TOTSTRYY,...)"
+        },
+	  
+ 	    {  
+		"parametertype": "Boolean",			
+        "id": "STRAINXX  STRAINYY    STRAINZZ  STRAINXY STRAINYZ STRAINZX ",
+        "name": "Export strain tensor",
+		"defaultvalue": false,
+        "description": "Display the results of the full stress tensor (TOTSTRNXX, TOTSTRNYY,...)"
+        },
+	  
+	    {  
+		"parametertype": "Boolean",			
+        "id": "PLSTRNXX  PLSTRNYY    PLSTRNZZ  PLSTRNXY PLSTRNYZ PLSTRNZX ",
+        "name": "Export plastic strain tensor",
+		"defaultvalue": true,
+        "description": "Display the results of the full stress tensor (TOTSTRNXX, TOTSTRNYY,...)"
+        },
+	  
+ 	  	{  
+		"parametertype": "Boolean",			
+        "id": "YIELDMOD  YLDVAL_F  YLDVAL_I",
+        "name": "Yield indicators",
+		"defaultvalue": false,
+        "description": "Display the results of YIELDMOD, YLDVAL_F"
+        },
+	
+	    {  
+		"parametertype": "Boolean",
+        "id": "ROCKDISX ROCKDISY ROCKDISZ NRCKDISZ",
+        "name": "Export displacements",
+		"defaultvalue": false,
+        "description": "Display the displacements (ROCKDISXX,ROCKDISYY,ROCKDISZZ)"
+        },
+	  
+
+	  
+	  
+		
+	
+ 	  {  
+		"parametertype": "Boolean",			
+        "id": "automatic_plastic_config",
+        "name": "Manual plasticity parameters",
+		"defaultvalue": false,
+        "description": "Adjust solver parameters manually (or allow automatic config at every step)"
+      },
+
+						{
+						"parametertype": "IntConstant", "name": "N. Quick calc(#Nquickcalculation)", "id": "Nquickcalculation",
+						"enabledWhen": "automatic_plastic_config",
+						"description": "Number of quick calculations(#Nquickcalculation)",
+						"template":  "General","defaultvalue": 15,   
+						"validationrules": [
+						   {"function": "get_constant","operator": ">","constraint": "1","errorMessage": "Quick Calc must be in the range [1,20]"},
+						   {"function": "get_constant","operator": "<","constraint": "20","errorMessage": "Quick Calc must be in the range [1,20]"}]	  
+						   
+	
+						},
+						  
+						{
+						"parametertype": "IntConstant", "name": "N. Yield (#nyield_gp_number)", "id": "nyield_gp_number",
+						"enabledWhen": "automatic_plastic_config",
+						"description": "Number of allowed gaussian points above the failure line",
+						"template":  "General","defaultvalue": 1500,   
+						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "0","errorMessage": "N. Yield value must be >= 0"}]
+						},
+						
+						{
+						"parametertype": "DoubleConstant", "name": "Yield tolerance(#vyieldtolerance)", "id": "vyieldtolerance",
+						"enabledWhen": "automatic_plastic_config",
+						"description": "Number of allowed gaussian points above the failure line",
+						"template":  "General","defaultvalue": 250.0,   
+						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "0","errorMessage": "N. Yield tolerance must be >= 0"}]
+						},
+						  
+						  
+						{
+						"parametertype": "IntConstant", "name": "N. Sub-increments (#Nsub_increments)", "id": "Nsub_increments",
+						"enabledWhen": "automatic_plastic_config",
+						"description": "Number of ??",
+						"template":  "General","defaultvalue": 5,   
+						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "1","errorMessage": "N. SubIncrements must be >= 1"}]
+						},
+						  
+						  
+    					{
+						"parametertype": "IntConstant", "name": "N. Iterations(#Niterations)", "id": "Niterations",
+						"enabledWhen": "automatic_plastic_config",
+						"description": "Number of ??",
+						"template":  "General","defaultvalue": 5,   
+						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "1","errorMessage": "N. Yield value must be >= 1"}]
+						} 
+		  
+
+
+		  
+    ]
+  }
+}

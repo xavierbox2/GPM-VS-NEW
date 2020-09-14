@@ -30,17 +30,8 @@ public:
         override
     {
         IMechanicalPropertiesInitializer::update_initial_mech_props( atts, sediments, options, data_arrays, old_nsurf, new_nsurf );
-        options->use_tables( ) = true;
-    }
 
-    //this actually only updates the porosity but generates a compaction dvt table for visage as a stiffness
-    //multiplier as a function of porosity. The table comes from the json file.
-    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier )
-        override
-    {
         options->use_tables( ) = true;
-
-        update_porosity( atts, sediments, options, data_arrays );
 
         //each element will have a field "dvt_table_index", which will be 0,1,2,3....
         //depending on whether SED0, SED1,....is the most predominant component.
@@ -49,10 +40,6 @@ public:
         for_each( cbegin( tmp ), cend( tmp ), [&sed_keys, key = "SED"]( const auto& name )
         {if(name.find( key ) != std::string::npos) sed_keys.push_back( name ); } );
 
-        //here sed_keys is SED1, SED2,....SEDN and those keys match sediments.at( sed_name ) and each
-        //hast its own compaction table.
-
-        //for each cell find the prevailing sediment
         vector<int> prevailing_index( options->geometry( )->total_elements( ), 0 );
         vector<float> max_concentration( options->geometry( )->total_elements( ), 0.0f );
 
@@ -76,6 +63,51 @@ public:
 
         auto& visage_data = data_arrays.get_or_create_array( "dvt_table_index", 0, prevailing_index.size( ) );
         copy( prevailing_index.begin( ), prevailing_index.end( ), visage_data.begin( ) );
+    
+    }
+
+    //this actually only updates the porosity
+    virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier )
+        override
+    {
+        options->use_tables( ) = true;
+
+        update_porosity( atts, sediments, options, data_arrays );
+
+        //each element will have a field "dvt_table_index", which will be 0,1,2,3....
+        //depending on whether SED0, SED1,....is the most predominant component.
+        //vector<string> tmp = data_arrays.array_names( );
+        //vector<string> sed_keys;//find gpm_names SED1,SED2,...SEDN
+        //for_each( cbegin( tmp ), cend( tmp ), [&sed_keys, key = "SED"]( const auto& name )
+        //{if(name.find( key ) != std::string::npos) sed_keys.push_back( name ); } );
+
+        //here sed_keys is SED1, SED2,....SEDN and those keys match sediments.at( sed_name ) and each
+        //hast its own compaction table.
+
+        //for each cell find the prevailing sediment
+        //vector<int> prevailing_index( options->geometry( )->total_elements( ), 0 );
+        //vector<float> max_concentration( options->geometry( )->total_elements( ), 0.0f );
+
+        //int index = 0;
+        //for(const string& sed_name : sed_keys)
+        //{
+        //    vector<float> sed_concentration = options->geometry( )->nodal_to_elemental( data_arrays.get_array( sed_name ) );
+
+        //    for(auto n : IntRange( 0, sed_concentration.size( ) ))
+        //    {
+        //        if(sed_concentration[n] > max_concentration[n])
+        //        {
+        //            max_concentration[n] = sed_concentration[n];
+        //            prevailing_index[n] = index;
+        //        }
+        //    }
+
+        //    options.add_table( index, sediments.at( sed_name ).compaction_table );
+        //    index += 1;
+        //}
+
+        //auto& visage_data = data_arrays.get_or_create_array( "dvt_table_index", 0, prevailing_index.size( ) );
+        //copy( prevailing_index.begin( ), prevailing_index.end( ), visage_data.begin( ) );
     }
 
 //

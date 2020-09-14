@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/product.schema.json",
+  "title": "GPM sediment input",
+  "description": "Data input to GPM",
+  "type": "object",
+  "required": [ "ID", "DIAMETER", "VERSION" ],
+  "properties": {
+    "NUMSEDS": {
+      "description": "",
+      "type": "integer"
+    },
+    "SEDNAME": {
+      "description": "names",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "SEDCOMNT": {
+      "description": "sediment data file",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ID": {
+      "description": "carbonate data file",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "DIAMETER": {
+      "description": "result data file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "GRAINDEN": {
+      "description": "result data file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "FALLVEL": {
+      "description": "Sea flag",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "DIFFCF": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "TRANSP": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "POR0": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "POR1": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "PERM0": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "PERM1": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "PERMANIS": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "COMP": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "ERODABILITY_COEFF": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "ERODABILITY_FUNC": {
+      "description": "flow file",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "ERODABILITY_PROP": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "NO_VAL": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "TRANSFORM_BY_TRANSPORT": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "DO_INPLACE_TRANSFORM": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "INPLACE_TRANSFORM_COEFF": {
+      "description": "flow file",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "VERSION": {
+      "description": "Describes the version of the input format",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  }
+}
