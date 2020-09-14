@@ -36,6 +36,7 @@ vector<pair<string, bool>> gpm_visage_link::list_needed_attribute_names( const v
     return to_named_pairs;
 }
 
+
 std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribute_names( bool include_top ) const
 {
     std::vector<property_type> atts = { { WellKnownVisageNames::ResultsArrayNames::Stiffness, false },
@@ -43,7 +44,19 @@ std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribu
 
     if(include_top) atts.push_back( { "TOP", false } );
     if(!_visage_options.enforce_elastic( ))
+    {
         atts.push_back( { "EQPLSTRAIN", false } );
+    }
+    if( static_cast<MechPropertiesDVT*>(_mech_props_model.get()))
+    {
+     cout<<"Using dvt tables"<<endl;
+     atts.push_back( { "CMP" + WellKnownVisageNames::ResultsArrayNames::Stiffness, false } );
+    }
+    if(static_cast<MechPropertiesEffectiveMedium*>(_mech_props_model.get( )))
+    {
+        cout << "Using MechPropertiesEffectiveMedium tables" << endl;
+    }
+
 
 
     transform( _output_array_names.begin( ), _output_array_names.end( ), back_inserter( atts ),

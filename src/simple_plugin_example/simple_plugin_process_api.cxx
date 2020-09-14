@@ -39,6 +39,7 @@ extern "C" DLLEXPORT void* gpm_plugin_api_create_plugin_handle( )
     //ptr->props_model = std::make_shared< MechPropertiesEffectiveMedium >( );
     ptr->props_model = std::make_shared< MechPropertiesDVT >( );
 
+
     //MechPropertiesDVT
     //MechPropertiesEffectiveMedium
     ptr->process = std::make_shared< gpm_visage_link>( ptr->config, ptr->props_model );

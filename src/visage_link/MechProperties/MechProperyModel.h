@@ -33,6 +33,20 @@ public:
 
         options->use_tables( ) = true;
 
+        auto& visage    = data_arrays[WellKnownVisageNames::ResultsArrayNames::Stiffness];
+        auto& initial   = data_arrays["Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness];
+        auto& compacted = data_arrays["CMP"+WellKnownVisageNames::ResultsArrayNames::Stiffness];
+
+        //the reader with dvt tables reads a YM and updates it in the data arrays
+        //since that info is ultimately passed again to visage, we overwrite it here so 
+        //we always pass the initial 
+        compacted.resize( visage.size() );
+        copy( visage.begin(), visage.end(), compacted.begin() );
+        copy( initial.begin( ), initial.end( ), visage.begin( ) );
+
+
+
+
         //each element will have a field "dvt_table_index", which will be 0,1,2,3....
         //depending on whether SED0, SED1,....is the most predominant component.
         vector<string> tmp = data_arrays.array_names( );
@@ -62,8 +76,9 @@ public:
         }
 
         auto& visage_data = data_arrays.get_or_create_array( "dvt_table_index", 0, prevailing_index.size( ) );
+        visage_data.resize( prevailing_index.size( ), 0.0f );
         copy( prevailing_index.begin( ), prevailing_index.end( ), visage_data.begin( ) );
-    
+
     }
 
     //this actually only updates the porosity
@@ -73,6 +88,9 @@ public:
         options->use_tables( ) = true;
 
         update_porosity( atts, sediments, options, data_arrays );
+
+
+
 
         //each element will have a field "dvt_table_index", which will be 0,1,2,3....
         //depending on whether SED0, SED1,....is the most predominant component.

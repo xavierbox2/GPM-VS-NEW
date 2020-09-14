@@ -34,9 +34,8 @@ std::optional< pair<int, string> >VisageDeckWritter::write_dvt_tables( VisageDec
     bool write_header = true;
 
     //table with the highest resolution 
-    auto it = std::max_element( options->_tables.begin( ), options->_tables.end(), []( const auto &p1, const auto &p2){ return p1.second.size() < p2.second.size(); } );
-    int table_size = it->second.size();
-
+    auto it = std::max_element( options->_tables.begin( ), options->_tables.end( ), []( const auto& p1, const auto& p2 ) { return p1.second.size( ) < p2.second.size( ); } );
+    int table_size = it->second.size( );
 
     //int table_size = -1;
     for(auto& p : options->_tables)
@@ -46,15 +45,18 @@ std::optional< pair<int, string> >VisageDeckWritter::write_dvt_tables( VisageDec
         if(write_header)
         {
             file << "*DVTTABLES" << std::endl;
-            file << options->_tables.size( ) << " " << t.size( ) << endl;
+            //file << options->_tables.size( ) << " " << t.size( ) << endl;
+            file << "1" << " " << t.size( ) << endl<<endl;
+            file << t.controller_var_name( ) << " " << t.dependant_name( ) << endl;
+
             //table_size = t.size( );
             write_header = false;
         }
 
         t.resample( table_size );
 
-        int index = p.first + 1;
-        file << t.controller_var_name( ) << " " << t.dependant_name( ) << endl;
+       // int index = p.first + 1;
+
         for(const auto& pair : t.value_pairs( ))
             file << pair.first << " " << pair.second << endl;
 
@@ -169,7 +171,7 @@ void write_property_array( ofstream& file, int grid_size, string vs_keyword, con
 
     if(phi.size( ) == 1)
     {
-        file << grid_size << " [   " << phi[0] *scale << " ] " << endl;
+        file << grid_size << " [   " << phi[0] * scale << " ] " << endl;
     }
 
     else
@@ -275,7 +277,7 @@ string VisageDeckWritter::write_plastic_mat_file( VisageDeckSimulationOptions* o
         {
             for(int n = 0; n < grid_size; n++)
             {
-                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_scale_factor * cohesion[n] * 0.9 <<endl;//coh_scale_factor * coh_change[n] << endl;
+                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_scale_factor * cohesion[n] * 0.9 << endl;//coh_scale_factor * coh_change[n] << endl;
             }
         }
 
@@ -913,22 +915,22 @@ std::string VisageDeckWritter::write_deck( VisageDeckSimulationOptions* options,
 
         if(options->auto_config_plasticity( ))
         {
-        cout <<"**************************************************************"<<endl;
-        cout <<"                  Automatic plasticity parameters             "<<endl;
-        cout << "*************************************************************"<< endl;
+            cout << "**************************************************************" << endl;
+            cout << "                  Automatic plasticity parameters             " << endl;
+            cout << "*************************************************************" << endl;
 
 
             if((arrays->contains( "COHESION" )) && (!options->enforce_elastic( )))
             {
                 auto& v = arrays->get_array( "COHESION" );
-                float avg_cohesion = accumulate( v.begin( ), v.end( ), 0.0f) / v.size( );
-                options->set_replace_instruction( "HEADER", "vyieldtolerance", std::to_string( 250.0f));// 0.1 * avg_cohesion ) );
+                float avg_cohesion = accumulate( v.begin( ), v.end( ), 0.0f ) / v.size( );
+                options->set_replace_instruction( "HEADER", "vyieldtolerance", std::to_string( 250.0f ) );// 0.1 * avg_cohesion ) );
                 //FIXME: hard-coded reasonabe value.
-                int n_nodes = 1 + (int)( 0.005 * 8 * xyz->size( ) / 3);
-                options->set_replace_instruction( "HEADER",  "nyield_gp_number", std::to_string( n_nodes ) );
-                options->set_replace_instruction( "HEADER",  "Nsub_increments", std::to_string( 10 ) );
-                options->set_replace_instruction( "HEADER",  "Nquickcalculation", std::to_string( 50 ) );
-                options->set_replace_instruction( "HEADER",  "Niterations", std::to_string( 10 ) );
+                int n_nodes = 1 + (int)(0.005 * 8 * xyz->size( ) / 3);
+                options->set_replace_instruction( "HEADER", "nyield_gp_number", std::to_string( n_nodes ) );
+                options->set_replace_instruction( "HEADER", "Nsub_increments", std::to_string( 10 ) );
+                options->set_replace_instruction( "HEADER", "Nquickcalculation", std::to_string( 50 ) );
+                options->set_replace_instruction( "HEADER", "Niterations", std::to_string( 10 ) );
                 options->set_replace_instruction( "RESULTS", "ele_tot_pl_strain", std::to_string( 1 ) );
             }
         }
