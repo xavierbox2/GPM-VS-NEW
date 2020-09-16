@@ -17,7 +17,6 @@ git add ./GPA/*.cpp
 
 
 
-git add README* 
 git add .gitignore 
 git add *.bat 
 git add *.json 
