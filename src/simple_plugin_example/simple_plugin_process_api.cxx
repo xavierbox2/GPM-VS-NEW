@@ -37,8 +37,10 @@ extern "C" DLLEXPORT void* gpm_plugin_api_create_plugin_handle( )
     ptr->config = std::make_shared< DefaultConfiguration >( );
     
     //ptr->props_model = std::make_shared< MechPropertiesEffectiveMedium >( );
-    ptr->props_model = std::make_shared< MechPropertiesDVT >( );
+    //ptr->props_model = std::make_shared< MechPropertiesDVT >( );
+    ptr->props_model = std::make_shared< MechPropertiesAttys >( );
 
+ 
 
     //MechPropertiesDVT
     //MechPropertiesEffectiveMedium

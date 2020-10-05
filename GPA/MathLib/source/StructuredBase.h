@@ -23,6 +23,10 @@
 #define MATHLIB_API __declspec(dllimport)
 #endif
 
+
+
+
+ 
 using namespace std;
 
 class

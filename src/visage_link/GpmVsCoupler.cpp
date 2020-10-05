@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <string_view>
 #include <iterator>
 #include <algorithm>
 #include <functional>
@@ -46,11 +47,13 @@ std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribu
     if(!_visage_options.enforce_elastic( ))
     {
         atts.push_back( { "EQPLSTRAIN", false } );
+        atts.push_back( { "PLSHEARSTRAIN", false } );
     }
-    if( static_cast<MechPropertiesDVT*>(_mech_props_model.get()))
+
+    if(static_cast<MechPropertiesDVT*>(_mech_props_model.get( )))
     {
-     cout<<"Using dvt tables"<<endl;
-     atts.push_back( { "CMP" + WellKnownVisageNames::ResultsArrayNames::Stiffness, false } );
+        cout << "Using dvt tables" << endl;
+        atts.push_back( { "CMP" + WellKnownVisageNames::ResultsArrayNames::Stiffness, false } );
     }
     if(static_cast<MechPropertiesEffectiveMedium*>(_mech_props_model.get( )))
     {
@@ -65,28 +68,45 @@ std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribu
     return atts;
 }
 
-bool gpm_visage_link::process_ui( string json_string )
+bool gpm_visage_link::process_ui( string_view json_string )
 {
     optional<UIParameters> params = JsonParser::parse_json_string<UIParameters>( json_string, _visage_options, _output_array_names );//, _plasticity_multiplier, _strain_function );
 
     if(params.has_value( ))
     {
         _sediments = params->sediments;
-        cout << *params << endl;
-    }
+
+
+
+//sediment.second.properties["RESIDUALCOHESION"] = value;
+
+
+        std::cout << *params << endl;
+    
 
     _plasticity_multiplier = params->plasticity_multiplier;
     _strain_function = params->strain_function;
+    }
+    //cout << "\n\nplasticity multiplier " << _plasticity_multiplier << endl;
 
-    cout << "\n\nplasticity multiplier " << _plasticity_multiplier << endl;
-
-    cout << "\n\nstrain function " << _strain_function << endl;
+    //cout << "\n\nstrain function " << _strain_function << endl;
 
     return params.has_value( );
 }
 
 bool gpm_visage_link::update_boundary_conditions( const gpm_attribute& top )//StructuredGeometry &geometry, bool flip_surface_order)
 {
+   /*
+    if( prev_base = std::move( base ); prev_base )
+    {
+    }
+    else
+    {
+    }
+   */
+
+
+
     prev_base = std::move( base );
     base.reset( new StructuredSurface( _visage_options->geometry( )->get_structured_surface( 0 ) ) );
 
@@ -135,24 +155,25 @@ bool gpm_visage_link::update_boundary_conditions( const gpm_attribute& top )//St
 
 bool  gpm_visage_link::read_visage_results( int last_step, string& error )
 {
-    string file_to_parse = _vs_results_reader.get_results_file( _visage_options->model_name( ), _visage_options->path( ), last_step );
-    if(file_to_parse.empty( ))
+    if(string file_to_parse = _vs_results_reader.get_results_file( _visage_options->model_name( ), _visage_options->path( ), last_step );
+        file_to_parse.empty( ))
     {
         error += "\nError parsing results from geomechanics simulation. X file not found";
         return false;
     }
-
-    vector<string> names_in_file = _vs_results_reader.get_key_names( file_to_parse );
-    int total_read = 0;
-    if(!file_to_parse.empty( ))
+    else
     {
+        vector<string> names_in_file = _vs_results_reader.get_key_names( file_to_parse );
+        int total_read = 0; //debug 
+        //if(!file_to_parse.empty( ))
+        //{
 
         for(auto name_in_file : names_in_file)
         {
             total_read += (1 - _vs_results_reader.read_result( file_to_parse, name_in_file, _data_arrays, &_from_visage_unit_conversion ));
         }
+    //}
     }
-
     //some results are derived from others. Example: eq. plastic strain. We will compute it here as well.
     if(!_visage_options.enforce_elastic( ))
     {
@@ -165,7 +186,9 @@ bool  gpm_visage_link::read_visage_results( int last_step, string& error )
         vector<float>& ezx = _data_arrays.get_array( "PLSTRNZX" );
 
         vector<float>& eq = _data_arrays.get_or_create_array( "EQPLSTRAIN" );//, 0.0f, exx.size() );
+        vector<float>& plshear = _data_arrays.get_or_create_array( "PLSHEARSTRAIN" );//, 0.0f, exx.size() );
         eq.resize( exx.size( ), 0.0f );
+        plshear.resize( exx.size( ), 0.0f );
 
         float a = 2.0 / 3.0, b = 3.0 / 2.0, one_third = 1.0 / 3.0, three_quaters = 0.75f;
         for(int n : IntRange( 0, exx.size( ) ))
@@ -176,9 +199,11 @@ bool  gpm_visage_link::read_visage_results( int last_step, string& error )
 
             float vxy = (exy[n] * exy[n] + eyz[n] * eyz[n] + ezx[n] * ezx[n]);
 
-
+            plshear[n] = sqrtf( vxy );
             eq[n] = a * sqrtf( b * (vxx * vxx + vyy * vyy + vzz * vzz) + three_quaters * vxy );
         }
+
+
     }
     return true;
 }
@@ -200,7 +225,7 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
     if(_error) return 1;
 
     shared_ptr<ChronoPoint> timer = make_shared<ChronoPoint>( "run_time_step" );
-   
+
     StructuredGrid& geometry = _visage_options->geometry( );
     const gpm_attribute& top = gpm_attributes.at( "TOP" );
     gpm_time = time_span;
@@ -270,10 +295,11 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
 
     //update_mech_props( gpm_attributes, old_num_surfaces, new_num_surfaces );
     increment_step( );
-    string mii_file_name = VisageDeckWritter::write_deck( &_visage_options, &_data_arrays, &_to_visage_unit_conversion );
+
 
     timer = make_shared<ChronoPoint>( "Visage running" );
-    if(run_visage( mii_file_name ) != 0)
+    if(string mii_file_name = VisageDeckWritter::write_deck( &_visage_options, &_data_arrays, &_to_visage_unit_conversion );
+        run_visage( mii_file_name ) != 0)
     {
         log += ("Visage run failed.  MII file: " + mii_file_name);
         _error = true;
@@ -298,16 +324,22 @@ bool gpm_visage_link::update_gpm_and_visage_geometris_from_visage_results( map<s
     auto [ncols, nrows, nsurfaces, total_nodes, total_elements] = geometry->get_geometry_description( );
 
     nodal_values.resize( total_nodes );
+
+    //if we have nodal displacements, use them
     if(_data_arrays.contains( "NRCKDISZ" ))
     {
         std::vector<float>& values = (_data_arrays.get_array( "NRCKDISZ" ));
         copy( begin( values ), end( values ), begin( nodal_values ) );
     }
+
+    //if we only have elemenal, take them and convert to nodal 
     else if(_data_arrays.contains( "ROCKDISZ" ))
     {
         std::vector<float>& values = (_data_arrays.get_array( "ROCKDISZ" ));
         nodal_values = StructuredBase::elemental_to_nodal( ncols, nrows, nsurfaces, values );//, values);
     }
+
+    //if we have neither, exit with an error code. 
     else
     {
         error += "\n[update_gpm_geometry_from_visage] The number of values read does not match elements or nodes when reading X files";
@@ -338,17 +370,13 @@ void   gpm_visage_link::update_compacted_props( attr_lookup_type& attributes )
     _mech_props_model->update_compacted_props( attributes, _sediments, _visage_options, _data_arrays, _plasticity_multiplier );
 }
 
- 
-
-
-
 int   gpm_visage_link::update_results( attr_lookup_type& attributes, std::string& error, int step )
 {
-    read_visage_results( _time_step, error );
-
-    update_compacted_props( attributes );
+    read_visage_results( _time_step, error );  
 
     update_gpm_and_visage_geometris_from_visage_results( attributes, error );
+
+    update_compacted_props( attributes );
 
     //now we should copy whatever results we need to copy from vs to gpm for display 
     bool include_top = false;
@@ -373,16 +401,14 @@ int   gpm_visage_link::update_results( attr_lookup_type& attributes, std::string
         {
             vector<float> nodal_values = StructuredBase::elemental_to_nodal( ncols, nrows, nsurfaces, values );
 
-            if( (vs_prop.name.find("STRAIN") != string::npos) || (vs_prop.name.find( "STRN" ) != string::npos))
+            if((vs_prop.name.find( "STRAIN" ) != string::npos) || (vs_prop.name.find( "STRN" ) != string::npos))
             {
              //cout<<"Scaling strains by 1E5"<<endl;
-             //times 1e5
-             for_each( begin(nodal_values), end(nodal_values), []( float &v){v*=1.0e5;} );
+                for_each( begin( nodal_values ), end( nodal_values ), []( float& v ) {v *= 1.0e5; } );
             }
-            if(vs_prop.name.find( "EFFSTR" ) != string::npos) 
+            if(vs_prop.name.find( "EFFSTR" ) != string::npos)
             {
                 //cout << "Scaling effective stress by 1E5" << endl;
-                //times 1e5
                 for_each( begin( nodal_values ), end( nodal_values ), []( float& v ) {v *= 1.0e5; } );
             }
 

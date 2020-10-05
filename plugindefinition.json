@@ -32,12 +32,12 @@
                 "ytemplate": [ "General" ]
               } ,
 			  			{
-				"parametertype": "DoubleConstant", "name": "Maximum cohesion change after failure", "id": "ResidualCohesion",
+				"parametertype": "DoubleConstant", "name": "Maximum cohesion after failure", "id": "RESIDUALCOHESION",
 				"description": "Maximum cohesion change after failure",
-				"template": "General","defaultvalue": 100.0,
+				"template": "General","defaultvalue": 0.1,
 				"validationrules": [
-				   {"function": "get_constant","operator": ">","constraint": "0.01","errorMessage": "Residual Cohesion must be in the range [0.01,1.0]"},
-				   {"function": "get_constant","operator": "<","constraint": "1000.0","errorMessage": "Residual Cohesion must be in the range [0.01,1000.0]"}	  
+				   {"function": "get_constant","operator": ">","constraint": "0.01","errorMessage": "Residual Cohesion must be in the range [0.01,1.0e9]"},
+				   {"function": "get_constant","operator": "<","constraint": "1000000000.0","errorMessage": "Residual Cohesion must be in the range [0.01,1000000000.0]"}	  
 				   ]
 			},
 			  
@@ -120,7 +120,7 @@
               },
 			  	  {
                 "parametertype": "Function",
-                "id": "StiffnessPorosityMultiplier",
+                "id": "StiffnessMultiplier",
                 "name": "Stiff-Poro mult",
                 "description": "half",
 				"supportconstants": false,

@@ -46,7 +46,7 @@ std::optional< pair<int, string> >VisageDeckWritter::write_dvt_tables( VisageDec
         {
             file << "*DVTTABLES" << std::endl;
             //file << options->_tables.size( ) << " " << t.size( ) << endl;
-            file << "1" << " " << t.size( ) << endl<<endl;
+            file << "1" << " " << t.size( ) << endl << endl;
             file << t.controller_var_name( ) << " " << t.dependant_name( ) << endl;
 
             //table_size = t.size( );
@@ -234,7 +234,7 @@ string VisageDeckWritter::write_plastic_mat_file( VisageDeckSimulationOptions* o
             {"FLUIDITY",1.0},
             {"HARDENING",-0.005},
             {"TENSILE_STRENGTH",5.0e3},
-            {"MAX_COHESION_CHANGE",50.0}
+            {"RESIDUALCOHESION",1.0}
         };
         vector<bool> had_names( defaults.size( ), true );
         for(auto n : IntRange( 0, (int)defaults.size( ) ))
@@ -256,7 +256,7 @@ string VisageDeckWritter::write_plastic_mat_file( VisageDeckSimulationOptions* o
         vector<float>& fluidity = data->get_array( "FLUIDITY" );
         vector<float>& hardening = data->get_array( "HARDENING" );
         vector<float>& tensile = data->get_array( "TENSILE_STRENGTH" );
-        vector<float>& coh_change = data->get_array( "MAX_COHESION_CHANGE" );
+        vector<float>& coh_change = data->get_array( "RESIDUALCOHESION" );
 
         file << "*YIELD_DATA,NOCOM" << std::endl;
 
@@ -270,15 +270,19 @@ string VisageDeckWritter::write_plastic_mat_file( VisageDeckSimulationOptions* o
         {
             for(int n = 0; n < grid_size; n++)
             {
-                file << -1 << " " << coh_scale_factor * cohesion[0] << " " << friction[0] << " " << dilation[0] << " " << fluidity[0] << " " << hardening[0] << " " << tens_scale_factor * tensile[0] << " " << coh_scale_factor * coh_change[0] << endl;
-            }
+                //file << -1 << " " << coh_scale_factor * cohesion[0] << " " << friction[0] << " " << dilation[0] << " " << fluidity[0] << " " << hardening[0] << " " << tens_scale_factor * tensile[0] << " " << coh_scale_factor * coh_change[0] *0.01<< endl;
+                file << -1 << " " << coh_scale_factor * cohesion[0] << " " << friction[0] << " " << dilation[0] << " " << fluidity[0] << " " << hardening[0] << " " << tens_scale_factor * tensile[0] << " " <<  coh_change[0]* coh_scale_factor << endl;
+
+          }
         }
         else
         {
             for(int n = 0; n < grid_size; n++)
             {
-                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_scale_factor * cohesion[n] * 0.9 << endl;//coh_scale_factor * coh_change[n] << endl;
-            }
+//                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_scale_factor * cohesion[n] * 0.01 << endl;//coh_scale_factor * coh_change[n] << endl;
+                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_change[n]* coh_scale_factor << endl;//coh_scale_factor * coh_change[n] << endl;
+
+       }
         }
 
         file << endl;
@@ -930,7 +934,7 @@ std::string VisageDeckWritter::write_deck( VisageDeckSimulationOptions* options,
                 options->set_replace_instruction( "HEADER", "nyield_gp_number", std::to_string( n_nodes ) );
                 options->set_replace_instruction( "HEADER", "Nsub_increments", std::to_string( 10 ) );
                 options->set_replace_instruction( "HEADER", "Nquickcalculation", std::to_string( 50 ) );
-                options->set_replace_instruction( "HEADER", "Niterations", std::to_string( 10 ) );
+                options->set_replace_instruction( "HEADER", "Niterations", std::to_string( 99999 ) );
                 options->set_replace_instruction( "RESULTS", "ele_tot_pl_strain", std::to_string( 1 ) );
             }
         }

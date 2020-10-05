@@ -43,7 +43,7 @@ public:
         const Value& x = table[0];
         const Value& y = table[1];
         cout << "size " << x.Size( ) << endl;                                 // porosity e_Mult
-        Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "strain", "time" );
+        Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "strain", "time" );//plastic_shear_strain
         for(size_t n = 0; n < x.Size( ); n++)
             t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
 
@@ -56,14 +56,14 @@ public:
     identified names. Whatever else, is returned in a map<string,strin>
     */
     template<typename T = UIParameters>
-    static optional<T> parse_json_string( string json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names )//, Table &plasticity, Table& strain_function )
+    static optional<T> parse_json_string( string_view json, VisageDeckSimulationOptions& visageOptions, set<string>& output_array_names )//, Table &plasticity, Table& strain_function )
     {
         auto start = chrono::steady_clock::now( );
         T ui_params;
         static const char* kTypeNames[] = { "Null", "bool", "bool", "object", "Array", "string", "number" };
 
         Document doc;
-        doc.Parse( json );
+        doc.Parse( json.data() );
 
         if(doc.HasParseError( )) { throw("Input string cannot be parsed"); }
         if(!doc.HasMember( "SED_SOURCE" )) { throw("Missing SED_SOURCE"); }
@@ -118,7 +118,8 @@ public:
                 float  value = itr->value.GetFloat( );
                 if(find( input_keywords.begin( ), input_keywords.end( ), name ) != input_keywords.end( ))
                 {
-                    visageOptions.set_value( name, to_string( value ) ); cout << "Set visage config keyword " << name << " to " << value << endl;
+                    visageOptions.set_value( name, to_string( value ) ); 
+                    cout << "Set visage config keyword " << name << " to " << value << endl;
                 }
                 else ui_params.properties[name] = value;
             }
@@ -129,7 +130,22 @@ public:
             }
         }
 
+
         std::map<string, SedimentDescription> sediments = parse_sediments_source( doc );
+
+        if(ui_params.properties.find( "RESIDUALCOHESION" ) != ui_params.properties.end( ))
+        {
+            float value = ui_params.properties["RESIDUALCOHESION"];
+
+            for(auto it = sediments.begin( ); it != sediments.end( ); it++)
+            {
+                SedimentDescription& second = it->second;
+                auto& props = second.properties;
+                props["RESIDUALCOHESION"] = value;
+            }
+        }
+
+
         ui_params.sediments = sediments;
 
         auto end = chrono::steady_clock::now( );
@@ -173,9 +189,9 @@ public:
                 if(itr->value.GetType( ) == Type::kNumberType)
                     sed.properties[itr->name.GetString( )] = itr->value.GetFloat( );
 
-                else if(strcmp( itr->name.GetString( ), "StiffnessPorosityMultiplier" ) == 0)
+                else if((strcmp( itr->name.GetString( ), "StiffnessMultiplier" ) == 0) || (strcmp( itr->name.GetString( ), "StiffnessMultiplier" ) == 0))
                 {
-                    cout << "Parsing table " << itr->name.GetString( ) << endl;
+                    cout << "Parsing table " << itr->name.GetString( ) <<  endl;
                     string cmp = itr->value.GetString( );
                     int table_index = stoi( cmp.substr( cmp.find_last_of( '/' ) + 1, cmp.size( ) ) );
                     string field_name = cmp.substr( cmp.find_first_of( '/' ) + 1, cmp.find_last_of( '/' ) - 1 );
@@ -185,7 +201,14 @@ public:
                     const Value& x = table[0];
                     const Value& y = table[1];
                     cout << "size " << x.Size( ) << endl;                                 // porosity e_Mult
-                    Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "porosity", "e_Mult" );
+                    //Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "porosity", "e_Mult" );
+
+                    
+                    Table t( doc[field_name].GetArray( )[table_index]["NAME"].GetString( ), "plastic_shear_strain", "e_Mult" );
+
+
+
+
                     for(size_t n = 0; n < x.Size( ); n++)
                         t.push_back( y[n].GetFloat( ), x[n].GetFloat( ) );
                     sed.compaction_table = t;

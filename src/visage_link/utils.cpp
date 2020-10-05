@@ -7,7 +7,7 @@ bool finder( std::string s, std::initializer_list<std::string> l )
 }
 
  
-bool exact_match ( std::string s, const vector<string> &l )
+bool exact_match ( std::string s, const std::vector<std::string> &l )
 {
     for(auto it = l.cbegin( ); it != l.cend( ); it++) if(s == *it) return true;
     return false;

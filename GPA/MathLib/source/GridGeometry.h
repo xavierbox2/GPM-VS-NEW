@@ -22,6 +22,12 @@ public:
     virtual std::vector<float>& get_local_depths(int nk) = 0;
 
     virtual std::vector<float> get_local_depths(int nk) const = 0;
+
+    virtual std::vector<float> get_local_depths(  ) const = 0;
+
+    virtual std::vector<float> get_depths_from_top( ) const { return std::vector<float>();}
+
+
 };
 
 #endif

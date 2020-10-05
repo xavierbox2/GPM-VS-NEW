@@ -6,8 +6,9 @@
 #include <numeric>
 #include <iterator>
 #include <string>
+#include <memory>
 
-using namespace std;
+//using namespace std;
 
 template<typename Source, typename Target, typename Condition, typename Value>
 void push_back_selected( const Source& source, Target& target, Condition condition, Value value )
@@ -55,7 +56,12 @@ void for_range( Container& c, int n, int n2, Function f ) { for_it( c.begin( ) +
 bool finder( std::string s, std::initializer_list<std::string> l );
 
 
-bool exact_match( std::string s, const vector<string> &l );
+bool exact_match( std::string s, const std::vector<std::string> &l );
+
+template<typename T>
+std::shared_ptr<T[]> make_shared_array( int size ) 
+{ return shared_ptr<T[]>( new T[size], []( T* p ) { delete[] p; } ); }
+
 
 #endif
 

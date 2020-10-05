@@ -45,109 +45,144 @@ class
     VISAGEDECKWRITEC_API
 #endif
 StructuredGrid: public StructuredBase, public IGridGeometry
+{
+public:
+
+virtual~StructuredGrid( ) {}
+
+StructuredGrid * operator->( ) { return this; }
+
+StructuredGrid( ) = default;
+
+StructuredGrid( const int ncols, const int nrows, const int nlayers, fVector2 extent, const CoordinateMapping3D & map );
+
+StructuredGrid& operator = ( StructuredGrid & g );
+
+//<x1,y1,z1, <x2,y2,z2>, ...for surface
+vector<fVector3> get_local_coordinates_vector( int surface_index ) const;
+
+//x1,y1,z1, x2,y2,z2, ...
+std::vector<float> get_local_coordinates( ) const;
+
+//x1,y1,z1, x2,y2,z2, ...for surface
+std::vector<float> get_local_coordinates( int surface_index ) const;
+
+std::vector<float>::iterator surface_height_begin( int k ) { return _zvalues[k].begin( ); }
+
+std::vector<float>::iterator surface_height_end( int k ) { return _zvalues[k].end( ); }
+
+tuple< vector<float>::iterator, vector<float>::iterator> surface_height_begin_end( int k )
+{
+return make_tuple( surface_height_begin( k ), surface_height_end( k ) );
+}
+
+vector<float>& get_heights( int surface_index );
+
+void set_z_values( int surface_index, std::vector<float> & values )
+{
+add_surfaces_if_needed( surface_index );
+std::copy( values.begin( ), values.end( ), _zvalues[surface_index].begin( ) );
+}
+
+void set_z_values( int surface_index,float value )
+{
+add_surfaces_if_needed( surface_index );
+for(auto& v : _zvalues[surface_index]) v = value;
+}
+
+void set_z_values( int surface_index, float* values )
+{
+add_surfaces_if_needed( surface_index );
+std::vector<float>& z = _zvalues[surface_index];
+std::copy( values, values + z.size( ), _zvalues[surface_index].begin( ) );
+}
+
+void displace_all_nodes( std::vector<float> & displacement );
+
+void set_num_surfaces( int nz )
+{
+_node_count[2] = nz;
+add_surfaces_if_needed( _node_count[2] - 1 );
+}
+
+std::vector<float>& get_local_depths( int nk ) { return _zvalues[nk]; }
+
+std::vector<float> get_local_depths( ) const
+{
+    std::vector<float> all_depths_from_base;
+
+    for(int k = 0; k < _zvalues.size( ); k++)
     {
-    public:
-
-    virtual~StructuredGrid( ) {}
-
-    StructuredGrid * operator->( ) { return this; }
-
-    StructuredGrid( ) = default;
-
-    StructuredGrid( const int ncols, const int nrows, const int nlayers, fVector2 extent, const CoordinateMapping3D & map );
-
-    StructuredGrid& operator = ( StructuredGrid & g );
-
-    //<x1,y1,z1, <x2,y2,z2>, ...for surface
-    vector<fVector3> get_local_coordinates_vector( int surface_index ) const;
-
-    //x1,y1,z1, x2,y2,z2, ...
-    std::vector<float> get_local_coordinates( ) const;
-
-    //x1,y1,z1, x2,y2,z2, ...for surface
-    std::vector<float> get_local_coordinates( int surface_index ) const;
-
-    std::vector<float>::iterator surface_height_begin( int k ) { return _zvalues[k].begin( ); }
-
-    std::vector<float>::iterator surface_height_end( int k ) { return _zvalues[k].end( ); }
-
-    tuple< vector<float>::iterator, vector<float>::iterator> surface_height_begin_end( int k )
-    { return make_tuple( surface_height_begin( k ), surface_height_end( k ) );
+    auto& depths = _zvalues[k];
+    copy( begin( depths ), end( depths ), back_inserter( all_depths_from_base ) );
     }
 
-    vector<float>& get_heights( int surface_index );
-    
-    void set_z_values( int surface_index, std::vector<float> & values )
+    return all_depths_from_base;
+}
+
+std::vector<float> get_local_depths( int nk ) const
+{
+return _zvalues[nk];
+}
+
+virtual std::vector<float> get_depths_from_top( ) const 
+{
+
+    const std::vector<float> &model_top = _zvalues[ nsurfaces()-1 ];
+
+    std::vector<float> ret( total_nodes() );
+    int i = 0; 
+    for(int k = 0; k < _zvalues.size(); k++ )
     {
-    add_surfaces_if_needed( surface_index );
-    std::copy( values.begin( ), values.end( ), _zvalues[surface_index].begin( ) );
+        const std::vector<float>& s = _zvalues[k];
+        for( int n =0; n < s.size(); n++)
+        ret[i++] = abs( model_top[n] - s[n] );
     }
 
-    void set_z_values( int surface_index,float value )
-    {
-    add_surfaces_if_needed( surface_index );
-    for(auto& v : _zvalues[surface_index]) v = value;
-    }
+    return ret;
 
-    void set_z_values( int surface_index, float* values )
-    {
-    add_surfaces_if_needed( surface_index );
-    std::vector<float>& z = _zvalues[surface_index];
-    std::copy( values, values + z.size( ), _zvalues[surface_index].begin( ) );
-    }
-
-    void displace_all_nodes( std::vector<float> & displacement );
-
-    void set_num_surfaces( int nz )
-    {
-    _node_count[2] = nz;
-    add_surfaces_if_needed( _node_count[2] - 1 );
-    }
-
-    std::vector<float>& get_local_depths( int nk ) { return _zvalues[nk]; }
-
-    std::vector<float> get_local_depths( int nk ) const
-    {
-    return _zvalues[nk];
-    }
-
-    StructuredSurface get_structured_surface( int index )
-    {
-    return StructuredSurface( ncols( ), nrows( ), length( ), reference( ), _zvalues[index] );
-    }
-
-    std::vector<int> get_height_overlaps( int surface1, int surface2, float tolerance ) const;
-
-    void brute_force_get_pinched_elements( float pinchout_tolerance, vector<int> & element_pinched_count, map<int, int> & node_connections );
-
-    vector<float>::iterator begin_surface( int k ) { return _zvalues[k].begin( );}
-
-    tuple< vector<float>::const_iterator, vector<float>::const_iterator> surface_range( int k1 )
-    { return make_tuple( cbegin_surface(k1), cend_surface(k1));
-    }
+}
 
 
-    vector<float>::const_iterator cbegin_surface( int k ) const { return _zvalues.at(k).cbegin( ); }
 
-    vector<float>::iterator end_surface( int k ) { return _zvalues[k].end( ); }
+StructuredSurface get_structured_surface( int index )
+{
+return StructuredSurface( ncols( ), nrows( ), length( ), reference( ), _zvalues[index] );
+}
 
-    vector<float>::const_iterator cend_surface( int k ) const { return _zvalues.at( k ).cend( ); }
+std::vector<int> get_height_overlaps( int surface1, int surface2, float tolerance ) const;
+
+void brute_force_get_pinched_elements( float pinchout_tolerance, vector<int> & element_pinched_count, map<int, int> & node_connections );
+
+vector<float>::iterator begin_surface( int k ) { return _zvalues[k].begin( ); }
+
+tuple< vector<float>::const_iterator, vector<float>::const_iterator> surface_range( int k1 )
+{
+return make_tuple( cbegin_surface( k1 ), cend_surface( k1 ) );
+}
 
 
-    protected:
+vector<float>::const_iterator cbegin_surface( int k ) const { return _zvalues.at( k ).cbegin( ); }
 
-    void add_surfaces_if_needed( int surface_index )
-    {
-     while(surface_index >= _zvalues.size( ))
-     {
-     _zvalues.push_back( std::vector<float>( nodes_per_layer( ) ) );
-     _node_count[2] = (int)_zvalues.size( );
-     }
+vector<float>::iterator end_surface( int k ) { return _zvalues[k].end( ); }
 
-    }
+vector<float>::const_iterator cend_surface( int k ) const { return _zvalues.at( k ).cend( ); }
 
-    std::vector<std::vector<float>> _zvalues;
-    };
+
+protected:
+
+void add_surfaces_if_needed( int surface_index )
+{
+ while(surface_index >= _zvalues.size( ))
+ {
+ _zvalues.push_back( std::vector<float>( nodes_per_layer( ) ) );
+ _node_count[2] = (int)_zvalues.size( );
+ }
+
+}
+
+std::vector<std::vector<float>> _zvalues;
+};
 
 
 class

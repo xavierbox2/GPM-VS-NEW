@@ -19,6 +19,9 @@ std::vector<float> StructuredGrid::get_local_coordinates( ) const
     return xyz;
     }
 
+
+ 
+
     //returns a vector [ (x11,x12,x13), (x21,x22,x23), (x31,x32,x33)...]  expressed in the local coordinates of the grid
     //it is always assumed that the nodes are arranged so cols variest the fastest, then rows and then layers.
 std::vector<float> StructuredGrid::get_local_coordinates( int surface_index ) const

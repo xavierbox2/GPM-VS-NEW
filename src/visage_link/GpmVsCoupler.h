@@ -156,7 +156,7 @@ public:
         _visage_options->update_step( _time_step );
     } //updates some options in visage
 
-    bool process_ui( string json_string );
+    bool process_ui( string_view json_string );
 
     void initialize_model_extents( const gpm_plugin_api_model_definition* model_def )
     {
