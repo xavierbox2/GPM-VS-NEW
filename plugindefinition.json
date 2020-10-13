@@ -55,13 +55,15 @@
 				"defaultvalue" : 10.0,
 	 
               },
-			  {
-			    "parametertype": "DoubleConstant",
+			    {
+                "parametertype": "DoubleConstant",
                 "id": "POROSITY", 
                 "name": "Init. Porosity",
                 "description": "half",
-				"defaultvalue" : 0.35
-              }, 
+				"defaultvalue" : 0.35,
+	 
+              },
+
 			  {
                 "parametertype": "DoubleConstant",
                 "id": "POISSONR",
@@ -76,13 +78,6 @@
                 "description": "half",
 				"defaultvalue" : 2.4
               },	  
-			  {
-                "parametertype": "DoubleConstant",
-                "id": "Attys",
-                "name": "Attys Coeff",
-                "description": "half",
-				"defaultvalue" : 1.0
-              },
 			  {
                 "parametertype": "DoubleConstant",
                 "id": "COHESION",
@@ -118,15 +113,28 @@
                 "description": "half",
 				"defaultvalue" : -0.005
               },
-			  	  {
-                "parametertype": "Function",
-                "id": "StiffnessMultiplier",
-                "name": "Stiff-Poro mult",
-                "description": "half",
-				"supportconstants": false,
-				"xtemplate": [ "General" ],
-                "ytemplate": [ "General" ]
-              } 
+				{
+					"parametertype": "Function",
+					"id": "StiffnessPlasticityMultiplier",
+					"name": "Stiff-Plasticity mult",
+					"description": "half",
+					"supportconstants": false,
+					"xtemplate": [ "General" ],
+					"ytemplate": [ "General" ]
+				},
+
+				{
+					"parametertype": "Function",
+					"id": "StiffnessDepthMultiplier",
+					"name": "Stiff-Depth mult",
+					"description": "half",
+					"supportconstants": false,
+					"xtemplate": [ "General" ],
+					"ytemplate": [ "General" ]
+				} 
+
+
+
             ]
           },
 		  
@@ -144,16 +152,7 @@
 		"defaultvalue": false,
         "description": "Instruct the solver to operate in elastic mode"
         },
-		    {
-				"parametertype": "Function",
-				"id": "WEAKENINGFACTOR",
-				"name": "Weakening",
-				"description": "half",
-				"supportconstants": false,
-				"xtemplate": [ "General" ],
-				"ytemplate": [ "General" ]
-			} ,
-	    
+    
 		{  
 		"parametertype": "Boolean",			
         "id": "EFFSTRXX  EFFSTRYY EFFSTRZZ  EFFSTRXY EFFSTRYZ EFFSTRZX ",

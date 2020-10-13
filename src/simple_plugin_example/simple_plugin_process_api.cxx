@@ -9,6 +9,7 @@
 #include <map>
 #include <sstream>
 #include <functional>
+
 #include "GpmVsCoupler.h"
 
 namespace {
@@ -30,17 +31,20 @@ namespace {
     };
 }
 
+process_wrapper* get_process_wrapper( void* handle )
+{
+    return static_cast<process_wrapper*>(handle);
+}
+
 extern "C" DLLEXPORT void* gpm_plugin_api_create_plugin_handle( )
 {
     auto ptr = new process_wrapper( );
-    
+
     ptr->config = std::make_shared< DefaultConfiguration >( );
-    
+
     //ptr->props_model = std::make_shared< MechPropertiesEffectiveMedium >( );
     //ptr->props_model = std::make_shared< MechPropertiesDVT >( );
-    ptr->props_model = std::make_shared< MechPropertiesAttys >( );
-
- 
+    ptr->props_model = std::make_shared< MechPropertiesPlasticityAndDepthDependency >( );
 
     //MechPropertiesDVT
     //MechPropertiesEffectiveMedium
@@ -49,14 +53,24 @@ extern "C" DLLEXPORT void* gpm_plugin_api_create_plugin_handle( )
     return ptr;
 }
 
-process_wrapper* get_process_wrapper( void* handle )
-{
-    return static_cast<process_wrapper*>(handle);
-}
-
 extern "C" DLLEXPORT void gpm_plugin_api_delete_plugin_handle( void* handle )
 {
     delete get_process_wrapper( handle );
+}
+
+extern "C" DLLEXPORT int gpm_plugin_api_get_plugin_id_length( void* handle )
+{
+    auto ptr = get_process_wrapper( handle );
+    return ptr->process->get_id( ).size( );
+}
+
+extern "C" DLLEXPORT int gpm_plugin_api_get_plugin_id( void* handle, struct gpm_plugin_api_string_layout* name )
+{
+    auto ptr = get_process_wrapper( handle );
+    auto id = ptr->process->get_id( );
+    std::copy( id.begin( ), id.end( ), name->str );
+    name->str_length = id.size( );
+    return 0;
 }
 
 // Read your input file, skip for now
@@ -72,9 +86,7 @@ extern "C" DLLEXPORT int gpm_plugin_api_read_parameters( void* handle, const cha
         buffer << input_file.rdbuf( );
         input_file.close( );
 
-        cout << "---------------------------------" << endl;
         cout << buffer.str( ) << endl;
-        cout << "---------------------------------" << endl;
         auto ptr = get_process_wrapper( handle );
         if(!ptr->process->process_ui( buffer.str( ) ))
         {
@@ -91,6 +103,7 @@ extern "C" DLLEXPORT int gpm_plugin_api_read_parameters( void* handle, const cha
 
     return return_code;
 }
+
 // Get the install directory, in case you have a simulator to call from there
 extern "C" DLLEXPORT void gpm_plugin_api_current_install_directory( void* handle, const char* const dir_name, int name_len )
 {
@@ -99,16 +112,21 @@ extern "C" DLLEXPORT void gpm_plugin_api_current_install_directory( void* handle
     ;
     ;
 }
+
 // Setup the model extents so a new coordinate system can be modelled and used
 extern "C" DLLEXPORT void gpm_plugin_api_set_model_extents( void* handle, const gpm_plugin_api_model_definition* const model )
 {
     auto ptr = get_process_wrapper( handle );
     ptr->process->initialize_model_extents( model );
 }
+
 // setup the sediment definitions
-extern "C" DLLEXPORT void gpm_plugin_api_set_sediments( void* handle, gpm_plugin_api_sediment_definition * seds, int num_seds )
+extern "C" DLLEXPORT void gpm_plugin_api_set_sediments( void* handle, gpm_plugin_api_sediment_position * seds, int num_seds )
 {
     cout << "We have " << num_seds << " sediments definitions " << endl;
+
+    auto& sediment_map = get_process_wrapper( handle )->process->_sediments;
+
     for(auto n : IntRange( 0, num_seds ))
     {
         //const char*  id;
@@ -116,23 +134,56 @@ extern "C" DLLEXPORT void gpm_plugin_api_set_sediments( void* handle, gpm_plugin
         //const char*  name;
         //size_t name_length;
         //ptrdiff_t index_in_sed_array;
-        gpm_plugin_api_sediment_definition* ptr = &seds[n];
+        gpm_plugin_api_sediment_position* ptr = &seds[n];
         cout << "id " << ptr->id << endl;
         cout << "name " << ptr->name << endl;
         cout << "index " << ptr->index_in_sed_array << endl;
-        ;
-        ;
+
+
+        sediment_map[ptr->name] = sediment_map[ptr->id];
+
     }
 }
-// Do whatever you need to for init of the display steps
-extern "C" DLLEXPORT void gpm_plugin_api_initialize_display_step( void* handle, double time )
-{
-    (void)get_process_wrapper( handle );
-}
+
+
 // The function that will be called at each small increment
 extern "C" DLLEXPORT int gpm_plugin_api_process_top_sediment_sea_timestep( void* handle, gpm_plugin_api_process_with_top_sediment_sea_parms * parms )
 {
+/*
+    auto* const ptr = get_process_wrapper(handle);
+    auto cpp_parms = Slb::Exploration::Gpm::Api::make_sediment_transport_holder(parms);
+    std::string log;
+    bool res = ptr->process->transport_sediments(cpp_parms, &log);
+    parms->error.log_level = gpm_plugin_api_log_normal;
+    if (!log.empty()) {
+        std::string tmp = log + "\n";
+        std::copy(tmp.begin(), tmp.end(), parms->error.message);
+        parms->error.message_length = tmp.size();
+    }
+    parms->sediment_removed = res ? 1 : 0;
     return 0;
+*/
+    return 0;
+}
+
+// Do whatever you need to for init of the display steps
+extern "C" DLLEXPORT int gpm_plugin_api_initialize_display_step( void* handle,
+                                                                 struct gpm_plugin_api_process_attribute_parms* parms )
+{
+    return 0;
+        //const auto attrs = Slb::Exploration::Gpm::Api::make_array_holders( *parms );
+        //auto* const ptr = get_process_wrapper( handle );
+        //std::string log;
+        //// Just call the wrapper with a couple of things 
+        //const int res = ptr->process->initialize_display_step( attrs, &log );
+        //parms->error.log_level = gpm_plugin_api_log_normal;
+        //if(!log.empty( )) {
+        //    std::string tmp = log + "\n";
+        //    std::copy( tmp.begin( ), tmp.end( ), parms->error.message );
+        //    parms->error.message_length = tmp.size( );
+        //}
+
+        //return res;
 }
 
 // Which attributes do you need to have, are they available?
@@ -193,6 +244,7 @@ extern "C" DLLEXPORT int gpm_plugin_api_get_write_model_attribute_num( void* han
     const auto write_attributes = ptr->process->list_wanted_attribute_names( );
     return  (int)write_attributes.size( );
 }
+
 // These are just the length of the attributes strings we need
 extern "C" DLLEXPORT void gpm_plugin_api_get_write_model_attribute_sizes( void* handle, int* attr_length, int num )
 {
@@ -204,6 +256,8 @@ extern "C" DLLEXPORT void gpm_plugin_api_get_write_model_attribute_sizes( void* 
         ++i;
     }
 }
+
+
 // now we ask for the attribute string itself
 extern "C" DLLEXPORT void gpm_plugin_api_get_write_model_attributes( void* handle, gpm_plugin_api_string_layout * attributes, int* top_only_attr, int num )
 {
@@ -217,6 +271,39 @@ extern "C" DLLEXPORT void gpm_plugin_api_get_write_model_attributes( void* handl
         ++i;
     }
 }
+
+
+
+// Here is where we get the sediment material properties that can be used for a given purpose
+// It also shows the mapping to the sediment property names
+extern "C" DLLEXPORT void gpm_plugin_api_set_sediment_material_properties( void* handle,
+                                                                           struct gpm_plugin_api_sediment_material_properties* seds,
+                                                                           int num_seds )
+{
+    auto& sediment_map = get_process_wrapper( handle )->process->_sediments;
+
+    for(int n : IntRange( 0, num_seds ))
+    {
+        cout << endl << "id " << sediment_map[seds[n].id].id << endl;
+        cout << "name" << seds[n].name << endl;
+        cout << "porosity = " << seds[n].initial_porosity << endl;
+        cout << "density = " << seds[n].grain_density * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity << endl;
+
+
+        if( sediment_map.find( seds[n].id ) != sediment_map.end( ))
+        {
+            sediment_map[seds[n].id].properties["POROSITY"] = seds[n].initial_porosity;
+            sediment_map[seds[n].id].properties["DENSITY"] = seds[n].grain_density;// * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity;
+            sediment_map[seds[n].id].name = seds[n].name;
+        }
+    }
+
+
+    //auto* const ptr = get_process_wrapper( handle );
+        //const auto the_materials = Slb::Exploration::Gpm::Api::make_sediment_materail_properties( seds, num_seds );
+        //ptr->process->set_materials( the_materials );
+}
+
 
 // Run a display time step with the attributes we said we need
 // Typically means that we take the geometry and transform to an unstractured grid
@@ -232,40 +319,12 @@ extern "C" DLLEXPORT int gpm_plugin_api_process_model_timestep( void* handle, gp
     const int res = ptr->run_timestep( attrs, log, params->time );
     return res;
 
-    //ptr->update_geometry_from_top_property(attrs);
-    //struct gpm_plugin_api_process_attribute_parms {
-    //	gpm_plugin_api_timespan time;
-    //	float*** attributes;
-    //	uint8_t** is_constant; /* is it a constant or a surface*/
-    //	size_t* num_attr_array;
-    //	gpm_plugin_api_string_layout* attr_names;
-    //	size_t num_attributes; /* same for attr_names and attributes*/
-    //	gpm_plugin_api_2d_memory_layout surface_layout;
-    //	gpm_plugin_api_message_definition error;
-    //};
-    //ptr->debug_write_surface_files( ptr->_time_step, n_surfaces );
-    ////float**** ptr = parms->attributes;
-    ////float **s ;
-    //auto end = parms->time.end;
- //   // Write out the files
- //   // Run the process
- //   const auto attrs = Slb::Exploration::Gpm::Api::make_array_holders(*parms);
-    //const auto ptr = get_process_wrapper(handle);
-    //std::string log;
-    //// Just call the wrapper with a couple of things
- //   const int res = ptr->process->run_timestep(attrs,&log);
-    //parms->error.log_level = gpm_plugin_api_log_normal;
-    //if (!log.empty()) {
-    //	std::string tmp = log + "\n";
-    //	std::copy(tmp.begin(), tmp.end(), parms->error.message);
-    //	parms->error.message_length = tmp.size();
-    //}
 }
+
 //Here, we take the results from the Geomechanics simulation and copy the results into the gpm arrays.
 extern "C" DLLEXPORT int gpm_plugin_api_update_attributes_timestep( void* handle, gpm_plugin_api_process_attribute_parms * parms )
 {
     auto attrs = Slb::Exploration::Gpm::Api::make_array_holders( *parms );
-    std::map<std::string, std::vector<Slb::Exploration::Gpm::Api::array_2d_indexer<float>>> ATT2 = Slb::Exploration::Gpm::Api::make_array_holders( *parms );
 
     const auto ptr = get_process_wrapper( handle );
 
@@ -297,3 +356,4 @@ extern "C" DLLEXPORT int gpm_plugin_api_update_attributes_timestep( void* handle
     //}
  //   return res;
 }
+

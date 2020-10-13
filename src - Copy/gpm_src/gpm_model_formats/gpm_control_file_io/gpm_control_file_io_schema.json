@@ -1,0 +1,268 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/product.schema.json",
+  "title": "GPM control input",
+  "description": "Data input to GPM",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [ "MAPFILE", "FLOWFILE", "SEDFILE", "OUTFILE", "TIMBEG", "TIMEND", "TDISPLAY", "DTIME", "VERSION" ],
+  "properties": {
+    "MAPFILE": {
+      "description": "input model file",
+      "type": "string"
+    },
+    "FLOWFILE": {
+      "description": "temporal data file",
+      "type": "string"
+    },
+    "SEDFILE": {
+      "description": "sediment data file",
+      "type": "string"
+    },
+    "CARBFILE": {
+      "description": "carbonate data file",
+      "type": "string"
+    },
+    "OUTFILE": {
+      "description": "result data file",
+      "type": "string"
+    },
+    "SEDFLAG": {
+      "description": "result data file",
+      "type": "integer"
+    },
+    "SEAFLAG": {
+      "description": "Sea flag",
+      "type": "integer"
+    },
+    "FLOWFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "ARROWS": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "PARROWS": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "PORFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "PRSFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "COMPFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "CARBFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "PERMUN": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "CMPUN": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "TIMBEG": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "TIMEND": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "TDISPLAY": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "ALTHICK": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "BASEROD": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "DTIME": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "ISAVE": {
+      "description": "flow file",
+      "type": "number"
+    },
+    "DEPODEPTHFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "EROSIONFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "SEACURVEEXTREMAFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "POSTPROCESSFLAG": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "POSTPROCESSFILE": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "POSTPROCESSPARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "AREA_SEDIMENT_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_AREA_SEDIMENT": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "POINT_SEDIMENT_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_POINT_SEDIMENT": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "DIFFUSION_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_DIFFUSION": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "STEADY_FLOW_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_STEADY_FLOW": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "UNSTEADY_FLOW_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_UNSTEADY_FLOW": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "WAVE_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_WAVES": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "LITHO_CLASSIFICATION_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_LITHO_CLASSIFICATION": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "COMPACTION_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_COMPACTION": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "TECTONICS_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_TECTONICS": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "MODEL_SAMPLING_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_MODEL_SAMPLING": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "DIAGENESIS_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_DIAGENESIS": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "ISOSTATIC_TECTONICS_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_ISOSTATIC_TECTONICS": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "FLOW_SIMULATOR_OUTPUT_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_FLOW_SIMULATOR_OUTPUT": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "PELAGIC_RAIN_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_PELAGIC_RAIN": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "PLUGINS_CTRL_PARMS": {
+      "description": "flow file",
+      "type": "string"
+    },
+    "DO_PLUGINS": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "DO_BATHYMETRY": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "DO_INCLUDE_ACTIVE_LAYER": {
+      "description": "include parts of active layer that has changed",
+      "type": "integer"
+    },
+    "RUN_OPTIMIZED_CODE": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "DO_LOG_PROCESS_ENERGY": {
+      "description": "flow file",
+      "type": "integer"
+    },
+    "VERSION": {
+      "description": "Describes the version of the input format",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  }
+}

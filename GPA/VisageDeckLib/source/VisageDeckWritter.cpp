@@ -271,18 +271,18 @@ string VisageDeckWritter::write_plastic_mat_file( VisageDeckSimulationOptions* o
             for(int n = 0; n < grid_size; n++)
             {
                 //file << -1 << " " << coh_scale_factor * cohesion[0] << " " << friction[0] << " " << dilation[0] << " " << fluidity[0] << " " << hardening[0] << " " << tens_scale_factor * tensile[0] << " " << coh_scale_factor * coh_change[0] *0.01<< endl;
-                file << -1 << " " << coh_scale_factor * cohesion[0] << " " << friction[0] << " " << dilation[0] << " " << fluidity[0] << " " << hardening[0] << " " << tens_scale_factor * tensile[0] << " " <<  coh_change[0]* coh_scale_factor << endl;
+                file << -1 << " " << coh_scale_factor * cohesion[0] << " " << friction[0] << " " << dilation[0] << " " << fluidity[0] << " " << hardening[0] << " " << tens_scale_factor * tensile[0] << " " << coh_change[0] * coh_scale_factor << endl;
 
-          }
+            }
         }
         else
         {
             for(int n = 0; n < grid_size; n++)
             {
 //                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_scale_factor * cohesion[n] * 0.01 << endl;//coh_scale_factor * coh_change[n] << endl;
-                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_change[n]* coh_scale_factor << endl;//coh_scale_factor * coh_change[n] << endl;
+                file << -1 << " " << coh_scale_factor * cohesion[n] << " " << friction[n] << " " << dilation[n] << " " << fluidity[n] << " " << hardening[n] << " " << tens_scale_factor * tensile[n] << " " << coh_change[n] * coh_scale_factor << endl;//coh_scale_factor * coh_change[n] << endl;
 
-       }
+            }
         }
 
         file << endl;
@@ -863,10 +863,6 @@ std::string VisageDeckWritter::write_deck( VisageDeckSimulationOptions* options,
     return   VisageDeckWritter::write_deck( options, &transformed_coordinates, arrays, unit_conversion );
 }
 
-
-
-
-
 std::string VisageDeckWritter::write_deck( VisageDeckSimulationOptions* options, std::vector<float>* xyz, ArrayData* arrays, const map<string, float>* unit_conversion )
 {
     vector<std::string> include_files;
@@ -948,5 +944,9 @@ std::string VisageDeckWritter::write_deck( VisageDeckSimulationOptions* options,
         }
     }
 
-    return write_mii_files( options, include_files );
+
+    string mii_file = write_mii_files( options, include_files );
+
+
+    return mii_file; 
 }

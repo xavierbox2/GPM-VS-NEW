@@ -24,6 +24,61 @@
 
 using namespace std;
 
+gpm_visage_link::gpm_visage_link( shared_ptr<IConfiguration>& config, shared_ptr<IMechanicalPropertiesInitializer> props_model )
+{
+    _config = config;
+    _mech_props_model = props_model;
+
+    _config->initialize_vs_options( _visage_options );
+    _gpm_vs_name_map["POR"] = "POROSITY"; //this means "POR" in gpm and "POROSITY" in visage.
+    _time_step = -1;
+    _error = false;
+
+    //stress in X files is in KPa and YM in GPa. We will use MPa for the stress and GPa for YM 
+    //cohesion, tensile strength will also be in MPa
+    set<string> names = WellKnownVisageNames::ResultsArrayNames::StressTensor( );
+    set<string> eff_stress_names = WellKnownVisageNames::ResultsArrayNames::EffectiveStressTensor( );
+
+    for(string name : names) _from_visage_unit_conversion[name] = 0.001f; //reads in KPa, converts to MPa
+    for(string name : eff_stress_names) _from_visage_unit_conversion[name] = 0.001f; //reads in KPa, converts to MPa
+
+    _to_visage_unit_conversion =
+    {
+     { WellKnownVisageNames::ResultsArrayNames::Stiffness, 1000000.00f}, //all the program is in GPa ->passed as KPa to vs
+     {"COHESION", 1000.00f}, //all the program is in MPa ->passed as KPa to vs
+     {"TENSILE_STRENGTH", 1000.00f}, //all the program is in MPa ->passed as KPa to vs
+     {"DENSITY", 10.00f} //all the program is in gr/cm3 ->passed as KPa rho * g 
+    };
+
+    _plasticity_multiplier.append_value( 0.0, 1.0 );
+    _plasticity_multiplier.append_value( 1.0, 1.0 );
+
+}
+
+bool gpm_visage_link::process_ui( string_view json_string )
+{
+
+    optional<UIParametersDVTDepthMultipliers> params = JsonParser::parse_json_string<UIParametersDVTDepthMultipliers>( json_string, _visage_options, _output_array_names );//, _plasticity_multiplier, _strain_function );
+
+    if(params.has_value( ))
+    {
+        _sediments = params->sediments;
+        _strain_function = params->strain_function;
+        std::cout << *params << endl;
+    }
+
+    //old version of ui parameters 
+    //optional<UIParameters> params = JsonParser::parse_json_string<UIParameters>( json_string, _visage_options, _output_array_names );//, _plasticity_multiplier, _strain_function );
+    //if(params.has_value( ))
+    //{
+    //    _sediments = params->sediments;
+    //     std::cout << *params << endl;
+    //    _plasticity_multiplier = params->plasticity_multiplier;
+    //    _strain_function = params->strain_function;
+    //}
+
+    return params.has_value( );
+}
 
 vector<pair<string, bool>> gpm_visage_link::list_needed_attribute_names( const vector<string>& from_all_atts ) const
 {
@@ -36,7 +91,6 @@ vector<pair<string, bool>> gpm_visage_link::list_needed_attribute_names( const v
 
     return to_named_pairs;
 }
-
 
 std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribute_names( bool include_top ) const
 {
@@ -60,53 +114,14 @@ std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribu
         cout << "Using MechPropertiesEffectiveMedium tables" << endl;
     }
 
-
-
     transform( _output_array_names.begin( ), _output_array_names.end( ), back_inserter( atts ),
                []( string name )->property_type { return { name, false }; } );
 
     return atts;
 }
 
-bool gpm_visage_link::process_ui( string_view json_string )
-{
-    optional<UIParameters> params = JsonParser::parse_json_string<UIParameters>( json_string, _visage_options, _output_array_names );//, _plasticity_multiplier, _strain_function );
-
-    if(params.has_value( ))
-    {
-        _sediments = params->sediments;
-
-
-
-//sediment.second.properties["RESIDUALCOHESION"] = value;
-
-
-        std::cout << *params << endl;
-    
-
-    _plasticity_multiplier = params->plasticity_multiplier;
-    _strain_function = params->strain_function;
-    }
-    //cout << "\n\nplasticity multiplier " << _plasticity_multiplier << endl;
-
-    //cout << "\n\nstrain function " << _strain_function << endl;
-
-    return params.has_value( );
-}
-
 bool gpm_visage_link::update_boundary_conditions( const gpm_attribute& top )//StructuredGeometry &geometry, bool flip_surface_order)
 {
-   /*
-    if( prev_base = std::move( base ); prev_base )
-    {
-    }
-    else
-    {
-    }
-   */
-
-
-
     prev_base = std::move( base );
     base.reset( new StructuredSurface( _visage_options->geometry( )->get_structured_surface( 0 ) ) );
 
@@ -202,8 +217,6 @@ bool  gpm_visage_link::read_visage_results( int last_step, string& error )
             plshear[n] = sqrtf( vxy );
             eq[n] = a * sqrtf( b * (vxx * vxx + vyy * vyy + vzz * vzz) + three_quaters * vxy );
         }
-
-
     }
     return true;
 }
@@ -247,10 +260,15 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
         _mech_props_model->update_initial_mech_props( gpm_attributes, _sediments, _visage_options, _data_arrays, 0, new_num_surfaces );
         old_num_surfaces = new_num_surfaces;
 
-        try {
+        //trick to stop the sims withiout loosing. Create the file, it will be detected. Will call error 
+        //and vs will not be called again. 
+        //remove the file at the 1st step if present 
+        try
+        {
             cout << boolalpha << "stop_visage file was removed? " << (std::remove( stop_vs_file_path( ).c_str( ) ) == 0) << endl;
         }
-        catch(...) {
+        catch(...)
+        {
             ;
         }
     }
@@ -260,8 +278,6 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
         _error = true;
         return 1;
     }
-
-
 
     update_boundary_conditions( top );
 
@@ -286,16 +302,12 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
 
     }
 
-
     _mech_props_model->update_initial_mech_props( gpm_attributes, _sediments, _visage_options, _data_arrays, old_num_surfaces, new_num_surfaces );
 
     int nprops = _data_arrays.count( );
 
-    timer = make_shared<ChronoPoint>( "Deck writting" );
 
-    //update_mech_props( gpm_attributes, old_num_surfaces, new_num_surfaces );
     increment_step( );
-
 
     timer = make_shared<ChronoPoint>( "Visage running" );
     if(string mii_file_name = VisageDeckWritter::write_deck( &_visage_options, &_data_arrays, &_to_visage_unit_conversion );
@@ -304,6 +316,8 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
         log += ("Visage run failed.  MII file: " + mii_file_name);
         _error = true;
     }
+
+
     timer.reset( );
 
     return _error ? 1 : 0;
@@ -372,7 +386,7 @@ void   gpm_visage_link::update_compacted_props( attr_lookup_type& attributes )
 
 int   gpm_visage_link::update_results( attr_lookup_type& attributes, std::string& error, int step )
 {
-    read_visage_results( _time_step, error );  
+    read_visage_results( _time_step, error );
 
     update_gpm_and_visage_geometris_from_visage_results( attributes, error );
 

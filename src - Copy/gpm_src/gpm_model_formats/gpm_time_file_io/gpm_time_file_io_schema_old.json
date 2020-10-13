@@ -1,0 +1,59 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "http://example.com/product.schema.json",
+	"title": "GPM sediment input",
+	"description": "Data input to GPM",
+	"type": "object",
+	"required": [],
+	"properties": {
+		"XMIN": {
+			"description": "",
+			"type": "number"
+		},
+		"XMAX": {
+			"description": "",
+			"type": "number"
+		},
+		"ZNULL": {
+			"description": "",
+			"type": "number"
+		},
+		"GRIDNAM": {
+			"description": "",
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"ZGRID": {
+			"description": "flow file",
+			"type": "array",
+			"items": {
+				"type": "array",
+				"items": {
+					"type": "array",
+					"items": {
+						"type": "number"
+					}
+				}
+			}
+		},
+		"OUT_RELATIVE_SEALEVEL_RATE": {
+			"description": "result data file",
+			"type": "integer"
+		},
+		"OUT_DEPOSITIONAL_ENERGY": {
+			"description": "result data file",
+			"type": "integer",
+			"items": {
+				"type": "number"
+			}
+		},
+		"VERSION": {
+			"description": "Describes the version of the input format",
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+		}
+	}
+}
+

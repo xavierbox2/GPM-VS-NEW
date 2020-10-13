@@ -158,8 +158,13 @@ public:
     {
         _tables[index] = table;
     }
+    void clear_tables()
+    {
+        _tables.clear();
+    }
 
     bool& use_tables( ) { return _use_tables; }
+
     map<int, Table> _tables;
 
     void set_boundary_condition( IBoundaryCondition *b )

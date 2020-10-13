@@ -30,6 +30,18 @@ public:
         options->use_tables( ) = true;
     }
 
+
+    /*
+    creates an elemental property for each property in the sediments table   +  InitialStiffness +  InitialPorosity
+    InitialPorosity  comes from GPM as a sediment-volume-weighted property
+    InitialStiffness comes from GPM as a sediment-volume-weighted property
+
+    also creates:
+        prevaling_sed_index
+        dvt_table_index
+
+    Both are elemental properties.  dvt_table_index is used by the API to write compaction tables.
+    */
     virtual void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
         override
     {
@@ -39,7 +51,7 @@ public:
 
         //read as a visage result, when using dvt tables. This is a compacted YM  
         auto& visage = data_arrays[WellKnownVisageNames::ResultsArrayNames::Stiffness];
-        
+
         //the initial ym was derived from sediments.
         auto& initial = data_arrays["Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness];
 
@@ -77,22 +89,25 @@ public:
                 }
             }
 
-            
 
-            options.add_table( index, sediments.at( sed_name ).compaction_table );
+
+            options.add_table( index, sediments.at( sed_name ).plasticity_compaction_table );
             index += 1;
         }
 
         auto& visage_data = data_arrays.get_or_create_array( "dvt_table_index", 0, prevailing_index.size( ) );
         visage_data.resize( prevailing_index.size( ), 0.0f );
         copy( prevailing_index.begin( ), prevailing_index.end( ), visage_data.begin( ) );
-    
+
         auto& sed_index = data_arrays["prevaling_sed_index"];
-        sed_index.resize( prevailing_index.size( ) );
         sed_index.resize( prevailing_index.size( ), 0.0f );
         copy( prevailing_index.begin( ), prevailing_index.end( ), sed_index.begin( ) );
-        
+
+    
     }
+
+
+
 
     //this actually only updates the porosity
     virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier )
@@ -161,7 +176,7 @@ public:
         for(const string& sed_name : sed_keys)
         {
             vector<float> vs_elem_concent = options->geometry( )->nodal_to_elemental( data_arrays.get_array( sed_name ) );
-            auto& stiffness_table = sediments.at( sed_name ).compaction_table;
+            auto& stiffness_table = sediments.at( sed_name ).plasticity_compaction_table;
 
             vector<float> avg_multiplier = stiffness_table.get_interpolate( data_arrays.get_array( WellKnownVisageNames::ResultsArrayNames::Porosity ) );
             transform( begin( vs_elem_concent ), end( vs_elem_concent ), begin( avg_multiplier ), begin( avg_multiplier ),
@@ -204,79 +219,116 @@ public:
 
 
 
-class MechPropertiesAttys : public MechPropertiesDVT
+class MechPropertiesPlasticityAndDepthDependency : public IMechanicalPropertiesInitializer
 {
 public:
-
-    
 
     virtual void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
         override
     {
+        options->use_tables( ) = true;
+
         if(old_nsurf == new_nsurf) return;
 
-        //initial YM, initial porosity from sediments, etc...
-        MechPropertiesDVT::update_initial_mech_props( atts, sediments, options, data_arrays, old_nsurf, new_nsurf );
+        /*
+        creates an elemental property for each property in the sediments table   +  InitialStiffness +  InitialPorosity
+        InitialPorosity  comes from GPM as a sediment-volume-weighted property
+        InitialStiffness comes from GPM as a sediment-volume-weighted property
+        */
+        IMechanicalPropertiesInitializer::update_initial_mech_props( atts, sediments, options, data_arrays, old_nsurf, new_nsurf );
 
-        //lets store a property z = zo, ie. initial thickness      
+
+        //*********************************************************/
+        /****     lets create the compaction tables             ***/ 
+        /****  these are the stiffness vs shear plastic strain. ***/ 
+        //*********************************************************
+        vector<string> sed_keys = {}; 
+        //SED11,SED22,.SED1, SED3,..SEDN not in order, some missing but all the keys must have by now an entry in the data_arrays 
+        for_each( cbegin( atts ), cend( atts ), [&sed_keys, key = "SED"]( const auto& att )
+        {if(att.first.find( key ) != std::string::npos) sed_keys.push_back( att.first ); } );
+
+        options->clear_tables();
+        int index = 0;
+        vector<int> prevailing_index( options->geometry( )->total_elements( ), 0 );
+        vector<float> max_concentration( options->geometry( )->total_elements( ), 0.0f );
+        for(const string& sed_name : sed_keys) //SED1, SED5, SED23, SED2, SED3, ....
+        {
+            vector<float> sed_concentration = options->geometry( )->nodal_to_elemental( data_arrays.get_array( sed_name ) );
+
+            for(auto n : IntRange( 0, sed_concentration.size( ) ))
+            {
+                if(sed_concentration[n] > max_concentration[n])
+                {
+                    max_concentration[n] = sed_concentration[n];
+                    prevailing_index[n] = index;
+                }
+            }
+
+            //each sediment has a plasticity-stiffness table
+            options.add_table( index, sediments.at( sed_name ).plasticity_compaction_table );
+            
+            index += 1;
+        }
+
+        //this will be used by the deck writter 
+        auto& dvt_table_index = data_arrays.get_or_create_array( "dvt_table_index", 0, prevailing_index.size( ) );
+
+        //resize but presever the previous values although not strickly needed. 
+        dvt_table_index.resize( prevailing_index.size( ), 0.0f );
+        copy( prevailing_index.begin( ), prevailing_index.end( ), dvt_table_index.begin( ) );
+
+        //*********************************************************/
+        /****     lets create the stiffness-depth trends        ***/
+        //*********************************************************
+        //in  addition, each sediment has a table linking depth to stiffness. 
+        //That depends on max burial depth ever achieved 
+        //and current burrial depth. Initially, both are the same. 
+        //We store those arrays here.
         auto [vs_cols, vs_rows, vs_surfaces, vs_total_nodes, vs_total_elements] = options->geometry( ).get_geometry_description( );
-        int offset = (vs_cols ) * (vs_rows ) * (old_nsurf > 0 ? (old_nsurf ) : 0);
+        int nodal_offset = (vs_cols-1) * (vs_rows-1) * (old_nsurf > 0 ? (old_nsurf-1) : 0);
 
-        //create a zo property nodal, initial depth from top
-        auto &zo = data_arrays["zo"];
-        zo.resize( vs_total_nodes, -1 ); //preserve previous values, initials set to -1
-        auto thickess_this_time = options->geometry()->get_depths_from_top();
-        copy( thickess_this_time.begin( ) + offset, thickess_this_time.end( ), zo.begin( ) + offset );
+        auto depth_now = options->geometry()->nodal_to_elemental(options->geometry( )->get_depths_from_top( ));//this is elemental 
+        auto &zo_stored = data_arrays.get_or_create_array("zo");
+        zo_stored.resize( depth_now.size(), 0.0f);
+        std::copy( cbegin( depth_now ) + nodal_offset, cend( depth_now ), begin(zo_stored) + nodal_offset );
 
-        //create a zmax property nodal, 
-        auto& zmax = data_arrays["zmax"];
-        zmax.resize( vs_total_nodes, -1 ); //preserve previous values, initials set to -1
-        copy( zo.begin( ) + offset, zo.end( ), zmax.begin( ) + offset );
+        auto& zmax_stored = data_arrays.get_or_create_array("zmax");                           //elemental as well 
+        zmax_stored.resize( depth_now.size( ), 0.0f );
+        std::copy( cbegin( depth_now ) + nodal_offset, cend( depth_now ), begin( zmax_stored )+ nodal_offset );
 
+        //Create/update the initial stiffness if needed for the time step that is about to start 
+        // 
+        //          E = Eo exp( -k|z - zo| ) approx  E = Eo Table( |z-zo| )     
+        //
+        auto &ym = data_arrays[ WellKnownVisageNames::ResultsArrayNames::Stiffness]; //elemental 
+        const auto& init_ym = data_arrays["Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness]; //elemental 
+
+        for(int n = 0; n < depth_now.size(); n++)
+        {
+         zmax_stored[n] = std::max<float>( zmax_stored[n], depth_now[n] );  
+         
+         float delta_z     = zmax_stored[n] - zo_stored[n];
+         int sediment_index = prevailing_index[n];
+         string sed_name = sed_keys.at( sediment_index );
+         float depth_multiplier = sediments.at(sed_name ).depth_compaction_table.get_interpolate( delta_z);
+
+         ym[n] = init_ym[n] * depth_multiplier;
+        }
     }
 
+    //just needs to update the porosity for display purposes. VS takes care of plasticity and 
+    //the initialization takes care of the stiffness-depth 
     virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& global_table )
         override
     {
-
-        //stiffness multiplier vs plasticity shear ->created during initialization of properties
         options->use_tables( ) = true;
+
         update_porosity( atts, sediments, options, data_arrays );
-
-        cout<<"The table here is"<<global_table<<endl; 
-
-        auto& zo = data_arrays["zo"];
-        auto& zmax = data_arrays["zmax"];
-        //zmax.resize( options->geometry()->total_nodes(), -999 );
-
-        //update stiffness based on max burial depth according to the plastic_multiplier
-        auto z_this_time = options->geometry( )->get_depths_from_top( );       
-        for(int n =0; n < options->geometry()->total_nodes();n++)
-        zmax[n] = std::max<float>( zmax[n], z_this_time[n]);
-        
-        //now modify the initial ym based on the global table prevaling_sed_index is elemental
-        auto& sed_index = data_arrays["prevaling_sed_index"];
-
-        //zmax - zo 
-        vector<float> zmax_less_zo; 
-        transform( begin(zmax), end(zmax), begin(zo ), back_inserter( zmax_less_zo ),[]( const auto &z1, const auto&z2){ return z1 - z2; } );
-        vector<float> burial_depth_change = options->geometry()->nodal_to_elemental( zmax_less_zo  );
-        /* ym = ym_init * exp( -k|z - zo| ) = ym_init * table( |z-zo| )
-        */
-
-        //data_arrays[WellKnownVisageNames::ResultsArrayNames::Stiffness] is the one that goes in the mat files !!
-        auto& visage    = data_arrays[WellKnownVisageNames::ResultsArrayNames::Stiffness];
-        auto& initial   = data_arrays["Init" + WellKnownVisageNames::ResultsArrayNames::Stiffness];
-
-        int n_ele = options->geometry()->total_elements();
-        vector<float> multiplier = global_table.get_interpolate( zmax_less_zo );
-        for( int n = 0; n <  n_ele; n++ )
-        visage[n] = initial[n] * multiplier[n];
-
-
     }
 
 };
 
 
 #endif
+
+

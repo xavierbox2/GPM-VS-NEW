@@ -7,8 +7,41 @@
 #include <iterator>
 #include <string>
 #include <memory>
+#include <chrono>
+#include <iostream>
 
-//using namespace std;
+using std::string;
+
+class ChronoPoint
+{
+public:
+
+    ChronoPoint( string s = " " )
+    {
+        name = s;
+        start = std::chrono::system_clock::now( );
+    }
+
+    ~ChronoPoint( )
+    {
+        std::chrono::system_clock::time_point end = std::chrono::system_clock::now( );
+        std::cout << "********Elapsed time*******" << name
+            << " (ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count( )
+            << " (us): " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count( )
+            << std::endl;
+    }
+
+    long seconds( ) const
+    {
+        std::chrono::system_clock::time_point end = std::chrono::system_clock::now( );
+        return std::chrono::duration_cast<std::chrono::seconds>(end - start).count( );
+    }
+
+     string name; 
+    std::chrono::system_clock::time_point start;
+};
+
+
 
 template<typename Source, typename Target, typename Condition, typename Value>
 void push_back_selected( const Source& source, Target& target, Condition condition, Value value )

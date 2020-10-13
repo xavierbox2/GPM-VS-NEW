@@ -1,0 +1,8 @@
+{
+  "VERSION": "2.0.0.0",
+  "NO_VALUE": 1E-12,
+  "PARAMETERS": {
+    "Output": "testen",
+    "Ascii": true
+  }
+}

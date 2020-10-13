@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/product.schema.json",
+  "title": "GPM time data",
+  "description": "Temporal data used in GPM.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "VERSION",
+    "SCHEMA_VERSION",
+    "PARAMETERS"
+  ],
+  "properties": {
+    "VERSION": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "SCHEMA_VERSION": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "ARRAY_2D": {
+      "$ref": "#/definitions/3d_float_array"
+    },
+    "PARAMETERS": {
+      "$ref": "#/definitions/process_parameters"
+    }
+  },
+  "definitions": {
+    "3d_float_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/2d_float_array"
+      }
+    },
+    "2d_float_array": {
+      "type": "object",
+      "required": [
+        "NAME",
+        "VALUES"
+      ],
+      "properties": {
+        "NAME": {
+          "type": "string"
+        },
+        "VALUES": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "array_or_constant_def": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^\\/ARRAY_2D\\/[0-9]+$"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "array_2d_def": {
+      "type": "string",
+      "pattern": "^\\/ARRAY_2D\\/[0-9]+$"
+    },
+    "process_parameters": {
+      "type": "object",
+      "required": [
+        "SeaLevel",
+        "OutputRelativeSealevelRate"
+      ],
+      "properties": {
+        "SeaLevel": {
+          "$ref": "#/definitions/array_or_constant_def"
+        },
+        "OutputRelativeSealevelRate": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
+
