@@ -14,13 +14,25 @@ int  VisageResultsReader::read_result( string file_to_parse, string keyword, Arr
     {
         if(EclipseReader::LoadEclipseDataArray( keyword, file_to_parse, values ))
         {
-            if((unit_converter != NULL) && (unit_converter->find( keyword ) != unit_converter->end( )))
+            if((unit_converter != nullptr) && (unit_converter->find( keyword ) != unit_converter->end( )))
             {
                 float factor = unit_converter->at( keyword );
                 transform( values.begin( ), values.end( ), values.begin( ), [&factor]( float v )->float { return v * factor; } );
             }
+
+            //this is an horrible patch that we had to add in the last minute to deal with 1e20 and -1e20 in the 
+            //X files which appear to be due to pinchouts.  
+            transform( values.begin( ), values.end( ), values.begin( ), []( float v )->float 
+            { 
+               return ( v > 1e19 ? 0.0 : ( v < -1.0e19 ? 0.0 : v) );             
+            });
+
             data->set_array( new_name.empty( ) ? keyword : new_name, values );
         }
+
+
+
+
     }
     catch(...)
     {

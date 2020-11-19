@@ -122,10 +122,13 @@ std::vector<gpm_visage_link::property_type> gpm_visage_link::list_wanted_attribu
 
 bool gpm_visage_link::update_boundary_conditions( const gpm_attribute& top )//StructuredGeometry &geometry, bool flip_surface_order)
 {
+
+    //move the smart pointer. The prev base becomes the base of the last time step
+    //and the new base will be figured out below ( queue of two )
     prev_base = std::move( base );
     base.reset( new StructuredSurface( _visage_options->geometry( )->get_structured_surface( 0 ) ) );
 
-    vector<float> gpm_base = get_gpm_heights( top, 0 );
+    vector<float> gpm_base = get_gpm_heights( top, 0 ); // TODO: slow, improve 
     vector<float>& base_heights = base->heights( );
     copy( gpm_base.begin( ), gpm_base.end( ), base_heights.begin( ) );
 
@@ -159,6 +162,7 @@ bool gpm_visage_link::update_boundary_conditions( const gpm_attribute& top )//St
     float end_time = abs( static_cast<float>(gpm_time.end) );
     float _lateral_strain = _strain_function.get_interpolate( end_time );
 
+    //in this version only strain boundary conditions or "fixed" ones are allowed. 
     StrainBoundaryCondition* long_bc = static_cast<StrainBoundaryCondition*>(_visage_options->get_boundary_condition( long_dir ));
     StrainBoundaryCondition* short_bc = static_cast<StrainBoundaryCondition*>(_visage_options->get_boundary_condition( short_dir ));
     long_bc->strain( ) = _lateral_strain;
@@ -223,8 +227,12 @@ bool  gpm_visage_link::read_visage_results( int last_step, string& error )
 
 int  gpm_visage_link::run_visage( string mii_file )
 {
-    std::cout << "Calling eclrun visage " << mii_file << " --np=4" << std::endl;
-    std::string command = "eclrun visage  " + mii_file + " --np=4";
+    //eclrun visage - v 2018.3 PALEOV3_1.MII
+    std::cout << "Calling eclrun visage " << mii_file <<std::endl;//<< " --np=4" << std::endl;
+    std::string command = "eclrun visage  " + mii_file;// + " --np=4";
+
+    //std::string command = "eclrun visage   -v 2018.3" + mii_file + " --np=4";
+
     int ret_code = system( command.c_str( ) );
     std::cout << "return code  " << ret_code << std::endl;
 
@@ -237,49 +245,66 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
     //at present, we dont have a way of stopping the GPM engine when we have an error in VS.
     if(_error) return 1;
 
+    //When the object is destructed, we get a print in the console of the time taken 
     shared_ptr<ChronoPoint> timer = make_shared<ChronoPoint>( "run_time_step" );
+     
 
     StructuredGrid& geometry = _visage_options->geometry( );
     const gpm_attribute& top = gpm_attributes.at( "TOP" );
     gpm_time = time_span;
 
+    
     int old_num_surfaces = geometry->nsurfaces( ), new_num_surfaces = (int)top.size( );
+     
+ 
 
-    auto stop_vs_file_path = [this]( ) ->string {return (filesystem::path( _visage_options.path( ) ) /= filesystem::path( "stop_visage" )).string( ); };  // lambda expression
+    //
+    auto stop_vs_file_path = [this]( ) ->string {return (filesystem::path( _visage_options.path( ) ) /= filesystem::path( "stop_visage" )).string( ); };  
 
     if(geometry->nsurfaces( ) == 0)//we havent even initialized the vs geometry.It must be the 1st step
-    {
+    {  
+
         //copy exactly the gpm geometry at the first step 
         geometry->set_num_surfaces( new_num_surfaces );
-        for(auto k : IntRange( 0, new_num_surfaces ))
+        for(auto k : IntRange(1, new_num_surfaces ))
         {
             auto [it1, it2] = const_att_iterator::surface_range( top, k );
             std::copy( it1, it2, geometry->begin_surface( k ) );
         }
-
+         
         _mech_props_model->update_initial_mech_props( gpm_attributes, _sediments, _visage_options, _data_arrays, 0, new_num_surfaces );
         old_num_surfaces = new_num_surfaces;
-
+         
         //trick to stop the sims withiout loosing. Create the file, it will be detected. Will call error 
         //and vs will not be called again. 
         //remove the file at the 1st step if present 
         try
         {
             cout << boolalpha << "stop_visage file was removed? " << (std::remove( stop_vs_file_path( ).c_str( ) ) == 0) << endl;
+         
+
         }
         catch(...)
-        {
+        { 
+
             ;
         }
+         
+
+
     }
 
     if(std::filesystem::exists( stop_vs_file_path( ) ))
-    {
+    { 
+
         _error = true;
-        return 1;
+        return 1; 
+
     }
+     
 
     update_boundary_conditions( top );
+     
 
     //add the new surface(s) preserving gpm thickness deposited. 
     vector<float> nodal_thickness;
@@ -293,21 +318,22 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
         const auto& zbelow = geometry->get_local_depths( k - 1 );
         auto& zabove = geometry->get_local_depths( k );
 
-        float zmax = -9999999.99f;
         for(int n : IntRange( 0, zabove.size( ) ))
         {
             zabove[n] = zbelow[n] + nodal_thickness[n];
-            if(zabove[n] > zmax) zmax = zabove[n];
         }
 
     }
+     
+
 
     _mech_props_model->update_initial_mech_props( gpm_attributes, _sediments, _visage_options, _data_arrays, old_num_surfaces, new_num_surfaces );
+     
 
     int nprops = _data_arrays.count( );
 
-
     increment_step( );
+     
 
     timer = make_shared<ChronoPoint>( "Visage running" );
     if(string mii_file_name = VisageDeckWritter::write_deck( &_visage_options, &_data_arrays, &_to_visage_unit_conversion );
@@ -316,7 +342,6 @@ int gpm_visage_link::run_timestep( const attr_lookup_type& gpm_attributes, std::
         log += ("Visage run failed.  MII file: " + mii_file_name);
         _error = true;
     }
-
 
     timer.reset( );
 
@@ -367,7 +392,7 @@ bool gpm_visage_link::update_gpm_and_visage_geometris_from_visage_results( map<s
 
     //this is the gpm part. debug: at this point, base in vs must be identical to base in gpm
     gpm_attribute& top = attributes.at( "TOP" );
-    for(int k : IntRange( 1, nsurfaces ))
+    for(int k : IntRange( 0, nsurfaces ))
     {
         auto [vs_it1, vs_it2] = geometry.surface_range( k );
 
@@ -417,7 +442,7 @@ int   gpm_visage_link::update_results( attr_lookup_type& attributes, std::string
 
             if((vs_prop.name.find( "STRAIN" ) != string::npos) || (vs_prop.name.find( "STRN" ) != string::npos))
             {
-             //cout<<"Scaling strains by 1E5"<<endl;
+             //cout<<"Scaling strains by 1E5 for visualization"<<endl;
                 for_each( begin( nodal_values ), end( nodal_values ), []( float& v ) {v *= 1.0e5; } );
             }
             if(vs_prop.name.find( "EFFSTR" ) != string::npos)

@@ -87,6 +87,8 @@ extern "C" DLLEXPORT int gpm_plugin_api_read_parameters( void* handle, const cha
         input_file.close( );
 
         cout << buffer.str( ) << endl;
+
+
         auto ptr = get_process_wrapper( handle );
         if(!ptr->process->process_ui( buffer.str( ) ))
         {
@@ -270,7 +272,7 @@ extern "C" DLLEXPORT void gpm_plugin_api_get_write_model_attributes( void* handl
         top_only_attr[i] = it.top_layer_only ? 1 : 0;
         ++i;
     }
-}
+}/////////////////////////////////
 
 
 
@@ -290,7 +292,7 @@ extern "C" DLLEXPORT void gpm_plugin_api_set_sediment_material_properties( void*
         cout << "density = " << seds[n].grain_density * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity << endl;
 
 
-        if( sediment_map.find( seds[n].id ) != sediment_map.end( ))
+        if(sediment_map.find( seds[n].id ) != sediment_map.end( ))
         {
             sediment_map[seds[n].id].properties["POROSITY"] = seds[n].initial_porosity;
             sediment_map[seds[n].id].properties["DENSITY"] = seds[n].grain_density;// * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity;
