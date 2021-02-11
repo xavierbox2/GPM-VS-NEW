@@ -18,7 +18,7 @@
         "id": "MaterialModel",
         "name": "Material model",
 		  "defaultvalue": "Mohr-Coulomb",
-        "items": ["Mohr-Coulomb", "Cap Model" ]
+        "items": ["Mohr-Coulomb", "Cap Model", "Elastic"]
       },
 	  			
 
@@ -55,15 +55,6 @@
 				"defaultvalue" : 10.0,
 	 
               },
-			    {
-                "parametertype": "DoubleConstant",
-                "id": "POROSITY", 
-                "name": "Init. Porosity",
-                "description": "half",
-				"defaultvalue" : 0.35,
-	 
-              },
-
 			  {
                 "parametertype": "DoubleConstant",
                 "id": "POISSONR",
@@ -71,13 +62,7 @@
                 "description": "half",
 				"defaultvalue" : 0.3
               },
-			  {
-                "parametertype": "DoubleConstant",
-                "id": "DENSITY",
-                "name": "Density (gr/cm3)",
-                "description": "half",
-				"defaultvalue" : 2.4
-              },	  
+  
 			  {
                 "parametertype": "DoubleConstant",
                 "id": "COHESION",
@@ -113,6 +98,14 @@
                 "description": "half",
 				"defaultvalue" : -0.005
               },
+			  			  			  {
+                "parametertype": "DoubleConstant",
+                "id": "PORE_COLLAPSE",
+                "name": "Pc (MPa)",
+                "description": "half",
+				"defaultvalue" : 5.00
+              },
+			  
 				{
 					"parametertype": "Function",
 					"id": "StiffnessPlasticityMultiplier",
@@ -142,7 +135,14 @@
 	  
 	  
 	  
-	  
+	   {  
+		"parametertype": "DoubleConstant",			
+        "id":  "n_cores",
+        "name": "Number of cores ",
+		"defaultvalue": 4,
+        "description": "Number of cores"
+        },
+    
 	  
 		  
 		{  
@@ -208,17 +208,28 @@
 	
  	  {  
 		"parametertype": "Boolean",			
-        "id": "automatic_plastic_config",
+        "id": "manual_plastic_config",
         "name": "Manual plasticity parameters",
 		"defaultvalue": false,
         "description": "Adjust solver parameters manually (or allow automatic config at every step)"
       },
-
+{
+						"parametertype": "IntConstant", "name": "Skip steps(1)", 
+						"id": "skip_steps",
+						"enabledWhen": "manual_plastic_config",
+						"description": "Run one step of every N, 1: run them all",
+						"template":  "General","defaultvalue": 1,   
+						"validationrules": [
+						   {"function": "get_constant","operator": ">","constraint": "0","errorMessage": "skip_steps must be in the range [0,20]"},
+						   {"function": "get_constant","operator": "<","constraint": "20","errorMessage": "skip_steps must be in the range [0,20]"}]	  
+						   
+	
+						},
 						{
-						"parametertype": "IntConstant", "name": "N. Quick calc(#Nquickcalculation)", "id": "Nquickcalculation",
-						"enabledWhen": "automatic_plastic_config",
+						"parametertype": "IntConstant", "name": "N. Quick calc(#Nquickcalculation,50)", "id": "Nquickcalculation",
+						"enabledWhen": "manual_plastic_config",
 						"description": "Number of quick calculations(#Nquickcalculation)",
-						"template":  "General","defaultvalue": 15,   
+						"template":  "General","defaultvalue": 50,   
 						"validationrules": [
 						   {"function": "get_constant","operator": ">","constraint": "1","errorMessage": "Quick Calc must be in the range [1,20]"},
 						   {"function": "get_constant","operator": "<","constraint": "20","errorMessage": "Quick Calc must be in the range [1,20]"}]	  
@@ -227,16 +238,16 @@
 						},
 						  
 						{
-						"parametertype": "IntConstant", "name": "N. Yield (#nyield_gp_number)", "id": "nyield_gp_number",
-						"enabledWhen": "automatic_plastic_config",
+						"parametertype": "IntConstant", "name": "N. Yield (#nyield_gp_number,3N/200)", "id": "nyield_gp_number",
+						"enabledWhen": "manual_plastic_config",
 						"description": "Number of allowed gaussian points above the failure line",
 						"template":  "General","defaultvalue": 1500,   
 						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "0","errorMessage": "N. Yield value must be >= 0"}]
 						},
 						
 						{
-						"parametertype": "DoubleConstant", "name": "Yield tolerance(#vyieldtolerance)", "id": "vyieldtolerance",
-						"enabledWhen": "automatic_plastic_config",
+						"parametertype": "DoubleConstant", "name": "Yield tolerance(#vyieldtolerance,250)", "id": "vyieldtolerance",
+						"enabledWhen": "manual_plastic_config",
 						"description": "Number of allowed gaussian points above the failure line",
 						"template":  "General","defaultvalue": 250.0,   
 						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "0","errorMessage": "N. Yield tolerance must be >= 0"}]
@@ -244,19 +255,19 @@
 						  
 						  
 						{
-						"parametertype": "IntConstant", "name": "N. Sub-increments (#Nsub_increments)", "id": "Nsub_increments",
-						"enabledWhen": "automatic_plastic_config",
+						"parametertype": "IntConstant", "name": "N. Sub-increments (#Nsub_increments,10)", "id": "Nsub_increments",
+						"enabledWhen": "manual_plastic_config",
 						"description": "Number of ??",
-						"template":  "General","defaultvalue": 5,   
+						"template":  "General","defaultvalue": 10,   
 						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "1","errorMessage": "N. SubIncrements must be >= 1"}]
 						},
 						  
 						  
     					{
-						"parametertype": "IntConstant", "name": "N. Iterations(#Niterations)", "id": "Niterations",
-						"enabledWhen": "automatic_plastic_config",
+						"parametertype": "IntConstant", "name": "N. Iterations(#Niterations,99999)", "id": "Niterations",
+						"enabledWhen": "manual_plastic_config",
 						"description": "Number of ??",
-						"template":  "General","defaultvalue": 5,   
+						"template":  "General","defaultvalue": 99999,   
 						"validationrules": [{"function": "get_constant","operator": ">=","constraint": "1","errorMessage": "N. Yield value must be >= 1"}]
 						} 
 		  

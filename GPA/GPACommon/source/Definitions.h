@@ -37,47 +37,50 @@ public:
 
     public:
 
-        static set<string> EffectiveStressTensor( )
+        static set<std::string> EffectiveStressTensor( )
         {
             return { "EFFSTRXX","EFFSTRYY", "EFFSTRZZ","EFFSTRXY", "EFFSTRYZ", "EFFSTRZX" };
         }
 
-        static set<string> StressTensor( )
+        static set<std::string> StressTensor( )
         {
             return { "TOTSTRXX","TOTSTRYY", "TOTSTRZZ","TOTSTRXY", "TOTSTRYZ", "TOTSTRZX" };
         }
 
-        static set<string> StrainTensor( )
+        static set<std::string> StrainTensor( )
         {
             return { "STRAINXX","STRAINYY", "STRAINZZ","STRAINXY", "STRAINYZ", "STRAINZX" };
         }
 
-        static set<string> PlasticStrainTensor( )
+        static set<std::string> PlasticStrainTensor( )
         {
             return { "PLSTRNXX","PLSTRNYY", "PLSTRNZZ","PLSTRNXY", "PLSTRNYZ", "PLSTRNZX" };
         }
 
- 
-        static set<string> YieldIndicators( )
+        static set<std::string> YieldIndicators( )
         {
             return { "YIELDMOD","YLDVAL_F", "YLDVAL_I" };
         }
 
-        static set<string> ElementalDisplacement( )
+        static set<std::string> ElementalDisplacement( )
         {
             return { "ROCKDISX","ROCKDISY","ROCKDISZ","NRCKDISZ" };
         }
  
 
-        static string Stiffness;// = "YOUNGMOD" ;
-        static string Pressure;
-        static string Porosity;
+        static std::string Stiffness;// = "YOUNGMOD" ;
+        static std::string Pressure;
+        static std::string Porosity;
+        static std::string Cohesion;
+        static std::string InitialDepth;
+        static std::string MaximumDepth;
 
-        static set<string> All( )
+
+        static set<std::string> All( )
         {
-            set<string> all = { Stiffness, Pressure, Porosity };
+            set<std::string> all = { Stiffness, Pressure, Porosity, Cohesion, InitialDepth,MaximumDepth };
             
-            set<string> aux = ElementalDisplacement( );
+            set<std::string> aux = ElementalDisplacement( );
             all.insert( aux.begin(), aux.end() );
 
             aux = YieldIndicators( );
@@ -94,10 +97,6 @@ public:
 
             aux = EffectiveStressTensor( );
             all.insert( aux.begin( ), aux.end( ) );
-
-         
-
-            
 
             return all;
         }
@@ -116,7 +115,7 @@ public:
 
     public:
 
-        static set<string> SolverKeywords( )
+        static set<std::string> SolverKeywords( )
         {      return  { "Nquickcalculation", "nyield_gp_number", "Nsub_increments", "Niterations"};
         }   
 
@@ -124,6 +123,11 @@ public:
     };
 
 
+    enum 
+#ifdef ISDLL
+        GPACOMMON_API
+#endif
+    FailureMode { ELASTIC, MOHRCOULOMB, CAPROCK};
 };
 
 

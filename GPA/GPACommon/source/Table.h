@@ -27,36 +27,30 @@ class
 
 public:
 
-    ~Table( ) = default;
+    Table* operator->( ) { return this; }
 
     Table( ) = default;
 
+    virtual ~Table( ) = default;
+
     Table& operator=( const Table& t ) = default;
 
-    Table* operator->( ) { return this; }
+    Table& operator=( Table&& t ) noexcept = default;
+
+    Table(  Table&& t ) noexcept = default; 
 
     Table( const Table& t ) : Table( t._name, t._controller_var_name, t._dependant_name )
     {
         copy( t._value_pairs.begin( ), t._value_pairs.end( ), back_inserter( _value_pairs ) );
     }
 
-    Table( string table_name, string controller, string dependant ) :
+    Table( std::string table_name, std::string controller, std::string dependant ) :
         _name( table_name ), _controller_var_name( controller ), _dependant_name( dependant ) {}
 
-    Table( string table_name, string controller, string dependant, vector<float>& x_in, vector<float>& y_in ) :
+    Table( std::string table_name, std::string controller, std::string dependant, vector<float>& x_in, vector<float>& y_in ) :
         Table( table_name, controller, dependant )
     {
         set_values( x_in, y_in );
-    }
-
-    void set_values( const TabularData& tabular )
-    {
-        throw(" set_values(  const TabularData &tabular) Not implemented yet [Table]");
-    }
-
-    virtual void set_values( const IData* tabular )
-    {
-        throw("Not implemented yet, set_values[] ");
     }
 
     void set_values( vector<pair<float, float>>& vals );
@@ -69,17 +63,17 @@ public:
 
     size_t size( ) const noexcept { return (int)(_value_pairs.size( )); }
 
-    string name( ) const noexcept { return _name; }
+    std::string name( ) const noexcept { return _name; }
 
-    string& name( ) { return _name; }
+    std::string& name( ) { return _name; }
 
-    string dependant_name( ) const noexcept { return _dependant_name; }
+    std::string dependant_name( ) const noexcept { return _dependant_name; }
 
-    string& dependant_name( ) { return _dependant_name; }
+    std::string& dependant_name( ) { return _dependant_name; }
 
-    string controller_var_name( ) const noexcept { return _controller_var_name; }
+    std::string controller_var_name( ) const noexcept { return _controller_var_name; }
 
-    string& controller_var_name( ) { return _controller_var_name; }
+    std::string& controller_var_name( ) { return _controller_var_name; }
 
 
     float get_interpolate( float x ) const
@@ -131,7 +125,7 @@ public:
 
 private:
 
-    std::string _name, _controller_var_name, _dependant_name;
+   std::string _name, _controller_var_name, _dependant_name;
     vector< pair<float, float>> _value_pairs;
 
 };

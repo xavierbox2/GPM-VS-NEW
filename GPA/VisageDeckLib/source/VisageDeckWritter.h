@@ -17,7 +17,7 @@ LIMITATIONS:
 //TODO: Date in the MII is hard coded from 190, 1901m 1902....
 //TODO: remove the preffix and pass a regex expression so it works with other codes.
 //TODO: Enforce Capitals for commands
-//TODO: if the value is a comma separated string, then each is a value this would fix the wirdness in LOADSTEP
+//TODO: if the value is a comma separated std::string, then each is a value this would fix the wirdness in LOADSTEP
 
 #include <iostream>
 #include <string>
@@ -42,40 +42,46 @@ class
 {
 public:
 
-    static std::string write_deck(VisageDeckSimulationOptions *options, ArrayData *arrays, const map<string, float> *unit_conversion = nullptr );
-
+    static std::string write_deck(VisageDeckSimulationOptions *options, ArrayData *arrays, const map<std::string, float> *unit_conversion = nullptr, bool dummy = false );
+    
+ 
 private:
 
     //if an array of nodes is passed, then the .nod and .ele file are produced. otherwise, only the miis.
-    static std::string  write_deck(VisageDeckSimulationOptions *options, std::vector<float> *xyz = nullptr, ArrayData *arrays = nullptr, const map<string, float> *unit_conversion = nullptr );
+    static std::string  write_deck(VisageDeckSimulationOptions *options, std::vector<float> *xyz = nullptr, ArrayData *arrays = nullptr, const map<std::string, float> *unit_conversion = nullptr );
 
     static std::string  write_mii_files(VisageDeckSimulationOptions *options, vector<std::string> &files);
 
-    static string  write_mat_files(VisageDeckSimulationOptions *options, ArrayData *arrays = nullptr, const map<string,float> *unit_conversion = nullptr);
+    static std::string  write_mat_files(VisageDeckSimulationOptions *options, ArrayData *arrays = nullptr, const map<std::string,float> *unit_conversion = nullptr);
 
     //requires the explicit node coordinates in the visage reference frame
-    static string write_node_files(VisageDeckSimulationOptions *options, std::vector<float> *xyz);//, bool &is_clock_wise);
+    static std::string write_node_files(VisageDeckSimulationOptions *options, std::vector<float> *xyz);//, bool &is_clock_wise);
 
-    static pair<int, string>  write_edge_loads(VisageDeckSimulationOptions *options, std::vector<float> *xyz);
+    static pair<int, std::string>  write_edge_loads(VisageDeckSimulationOptions *options, std::vector<float> *xyz);
 
     static int get_edge_loads(VisageDeckSimulationOptions *options, std::vector<float> *xyz, vector<int> &indices, vector<float> &values);
 
-    static string  write_connections_files(map<int, int> &c, VisageDeckSimulationOptions *options);
+    //static std::string  write_connections_files(map<int, int> &c, VisageDeckSimulationOptions *options);
+
+    static std::string  write_connections_files( std::map<int, std::vector<int>>& c, VisageDeckSimulationOptions* options );
+
+    static std::string  write_connections_files2( const map<int, int> &node_connections , VisageDeckSimulationOptions* options );
+
+   
+
 
     static std::tuple<int, int, int, int> get_node_indices_for_element(int element, int *nodes);
 
-    //    static pair<int,string> write_dvt_tables(VisageDeckSimulationOptions *options);
+    static optional< pair<int, std::string> > write_dvt_tables(VisageDeckSimulationOptions *options, ArrayData* arrays = nullptr);
 
-    static optional< pair<int, string> > write_dvt_tables(VisageDeckSimulationOptions *options, ArrayData* arrays = nullptr);
-
-    static bool write_ele_files(const VisageDeckSimulationOptions *options, bool is_clock_wise, const vector<int> *activity = nullptr, const vector<float>* dvt_id = nullptr );
+    //static bool write_ele_files(const VisageDeckSimulationOptions *options, bool is_clock_wise, const vector<int> *activity = nullptr, const vector<float>* dvt_id = nullptr, vector<bool>  *nodes_pinched_out = nullptr );
+    static std::string write_ele_files( const VisageDeckSimulationOptions* options,   const vector<float>* dvt_id = nullptr, vector<int> *ele_pinch = nullptr  );
 
     //returns the number of fixities written to the file
-    static int write_fix_files(VisageDeckSimulationOptions *options, std::vector<float> *xyz);
+    //static int write_fix_files(VisageDeckSimulationOptions *options, std::vector<float> *xyz);
 
-    static int write_dis_files(VisageDeckSimulationOptions *options);
-
-    static string write_plastic_mat_file(VisageDeckSimulationOptions *options, ArrayData *data, const map<string,float> *unit_conv = nullptr);
+   
+    static std::string write_plastic_mat_file(VisageDeckSimulationOptions *options, ArrayData *data, const map<std::string,float> *unit_conv = nullptr);
 
     //global 0, 1, 2, visage 1,2,3
     static int get_visage_dir(int global_dir)
@@ -83,21 +89,26 @@ private:
         return  (global_dir == 0) ? 1 : (global_dir == 1) ? 3 : 2;
     }
 
-    static std::pair<int, int> write_top_basement_boundary_conditions(VisageDeckSimulationOptions *options);
-
+    static std::pair<int, int> write_top_basement_boundary_conditions(VisageDeckSimulationOptions *options );
+ 
     static std::pair<int, int> write_sides_boundary_conditions(VisageDeckSimulationOptions *options);
 
-    static std::pair<int, int> write_boundary_conditions(VisageDeckSimulationOptions *options);
+    static std::pair<std::string, std::string> write_boundary_conditions(VisageDeckSimulationOptions *options );
 
-    static std::string get_filename(int step, std::string model_name, string suffix)
+
+    
+    static std::string get_mio_filename( const VisageDeckSimulationOptions& options )
     {
-        return model_name + "_" + to_string(step) + "." + suffix;
+        return options.path( ) + "\\" + get_filename( options.step( ), options.model_name( ), "MIO" );
+    }
+    static std::string get_filename( int step, std::string model_name, std::string suffix )
+    {
+        return model_name + "_" + std::to_string( step ) + "." + suffix;
     }
 
     static std::string get_header()
     {
-        std::string s = "--Generated by gpm-vs coupler.\n--For details please contact xavier garcia xteijeiro@slb.com or Assef hussein AHussein7@slb.com \n";
-        return s;
+        return "--Generated by gpm-vs coupler.\n--For details please contact xavier garcia xteijeiro@slb.com or Assef hussein AHussein7@slb.com \n";
     }
 
     static std::tuple<int, int, int, int> get_element_indices(int element, int *cells);

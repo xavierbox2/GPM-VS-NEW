@@ -25,8 +25,6 @@ void Table::set_values(vector<float>& x_in, vector<float>& y_in)
     }
 
     sort(_value_pairs.begin(), _value_pairs.end());
-
- 
 }
 
 std::vector<float> Table::get_interpolate(const vector<float> &x) const

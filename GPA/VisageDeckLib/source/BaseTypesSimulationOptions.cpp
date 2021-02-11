@@ -12,7 +12,7 @@
 
 
 
-bool SimulationOptions::set_value( string name, string value )
+bool SimulationOptions::set_value( std::string name, std::string value )
 {
     remove_space( name );
     bool ret = false;
@@ -39,7 +39,7 @@ bool SimulationOptions::set_value( string name, string value )
     }
     else  if(contains( name ))
     {
-        commands[name]->Value = value;
+        commands[name]->value = value;
         return true;
     }
 
@@ -61,56 +61,31 @@ bool SimulationOptions::set_value( string name, string value )
     return ret;
 }
 
-bool SimulationOptions::contains( string  s ) const
+bool SimulationOptions::contains( std::string  s ) const
 {
-    //transform( s.begin( ), s.end( ), s.begin(), []( char c ) {return std::tolower( c ); } );
     return commands.find( s ) == commands.end( ) ? false : true;
 }
 
-InstructionBlock* SimulationOptions::set_command( string name, string value, unordered_map<string, string> *hashes )
+InstructionBlock* SimulationOptions::set_command( std::string name, std::string value, std::unordered_map<std::string, std::string> *hashes )
 {
     remove_space( name );
     delete_command( name );
 
     InstructionBlock *new_command = new InstructionBlock( name, value );
     new_command->set_instruction( hashes );
-    commands.insert( std::pair<string, InstructionBlock*>( name, new_command ) );
+    commands.insert( std::pair<std::string, InstructionBlock*>( name, new_command ) );
     return new_command;
 }
 
-InstructionBlock* SimulationOptions::get_command( std::string name )
-{
-    remove_space( name );
 
-    auto it = commands.find( name );
-    if(it != commands.end( ))
-        return  it->second;
-
-    return nullptr;
-}
-
-std::vector< InstructionBlock* > SimulationOptions::get_commands( ) const
-{
-    std::vector< InstructionBlock* > items;
-    //copy( commands.begin( ), commands.end( ), back_inserter( co ) );
-    //return co;
-
-    for(unordered_map<string, InstructionBlock*>::const_iterator it = commands.cbegin( ); it != commands.cend( ); ++it)
-    {
-        items.push_back( it->second );
-
-    }
-
-    return items;
-}
 
 //hashes are options inside the asterisks/commands. Both can also have values. They look as hashes and asterisks in the miis
-InstructionBlock* SimulationOptions::set_replace_instruction( string commandName, string hashName, string hashValue )
+InstructionBlock* SimulationOptions::set_replace_instruction( std::string commandName, std::string hashName, std::string hashValue )
 {
     remove_space( commandName );
     remove_space( hashName );
     InstructionBlock* command = NULL;
-    unordered_map<string, InstructionBlock*>::iterator it = commands.find( commandName );
+    std::unordered_map<std::string, InstructionBlock*>::iterator it = commands.find( commandName );
     if(it != commands.end( ))
     {
         command = it->second;
@@ -120,17 +95,18 @@ InstructionBlock* SimulationOptions::set_replace_instruction( string commandName
     {
         command = set_command( commandName, "" );
         command->set_replace_instruction( hashName, hashValue );
-        commands.insert( std::pair<string, InstructionBlock*>( commandName, command ) );
+        commands.insert( std::pair<std::string, InstructionBlock*>( commandName, command ) );
     }
 
     return command;
 }
 
-void SimulationOptions::delete_instruction( string command, string name )
+
+void SimulationOptions::delete_instruction( std::string command, std::string name )
 {
     remove_space( name );
 
-    unordered_map<string, InstructionBlock*>::iterator it = commands.find( command );
+    std::unordered_map<std::string, InstructionBlock*>::iterator it = commands.find( command );
     if(it != commands.end( ))
     {
         it->second->delete_instruction( name );
@@ -138,11 +114,11 @@ void SimulationOptions::delete_instruction( string command, string name )
 }
 
 
-void SimulationOptions::delete_command( string name )
+void SimulationOptions::delete_command( std::string name )
 {
     remove_space( name );
 
-    unordered_map<string, InstructionBlock*>::iterator it = commands.find( name );
+    std::unordered_map<std::string, InstructionBlock*>::iterator it = commands.find( name );
     if(it != commands.end( ))
     {
         delete it->second;
@@ -150,7 +126,7 @@ void SimulationOptions::delete_command( string name )
     }
 }
 
-void SimulationOptions::use_options( unordered_map<string, string> options )
+void SimulationOptions::use_options( std::unordered_map<std::string, std::string> options )
 {
     bool all_success = true;
     for(auto &option : options)

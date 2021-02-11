@@ -176,6 +176,7 @@ private:
     //injected config, ui and mech props 
     shared_ptr<IConfiguration> _config;
     shared_ptr<IMechanicalPropertiesInitializer> _mech_props_model;
+    shared_ptr< UIParametersBase > _ui_params; 
     
     //units
     map<string, float> _from_visage_unit_conversion;

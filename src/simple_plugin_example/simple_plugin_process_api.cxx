@@ -55,7 +55,7 @@ extern "C" DLLEXPORT void* gpm_plugin_api_create_plugin_handle( )
 
 extern "C" DLLEXPORT void gpm_plugin_api_delete_plugin_handle( void* handle )
 {
-    delete get_process_wrapper( handle );
+    //delete get_process_wrapper( handle );
 }
 
 extern "C" DLLEXPORT int gpm_plugin_api_get_plugin_id_length( void* handle )
@@ -88,7 +88,6 @@ extern "C" DLLEXPORT int gpm_plugin_api_read_parameters( void* handle, const cha
 
         cout << buffer.str( ) << endl;
 
-
         auto ptr = get_process_wrapper( handle );
         if(!ptr->process->process_ui( buffer.str( ) ))
         {
@@ -96,7 +95,7 @@ extern "C" DLLEXPORT int gpm_plugin_api_read_parameters( void* handle, const cha
         }
 
     }
-    catch(exception & e)
+    catch(exception& e)
     {
         error_msg->message_length = strlen( e.what( ) );//, error_msg->message_array_length );
         sprintf( error_msg->message, "%s", e.what( ) );
@@ -128,6 +127,8 @@ extern "C" DLLEXPORT void gpm_plugin_api_set_sediments( void* handle, gpm_plugin
     cout << "We have " << num_seds << " sediments definitions " << endl;
 
     auto& sediment_map = get_process_wrapper( handle )->process->_sediments;
+    //;
+    //;
 
     for(auto n : IntRange( 0, num_seds ))
     {
@@ -141,9 +142,13 @@ extern "C" DLLEXPORT void gpm_plugin_api_set_sediments( void* handle, gpm_plugin
         cout << "name " << ptr->name << endl;
         cout << "index " << ptr->index_in_sed_array << endl;
 
+        auto it = sediment_map.find( ptr->id );
+        if(it == sediment_map.end( ))
+        {
+            cout << "ERROR: SEDIMENT ID RECEIVED IS NOT PRESENT IN THE GEOMECHANICS TABLE!!" << endl;
+        }
 
         sediment_map[ptr->name] = sediment_map[ptr->id];
-
     }
 }
 
@@ -282,28 +287,43 @@ extern "C" DLLEXPORT void gpm_plugin_api_set_sediment_material_properties( void*
                                                                            struct gpm_plugin_api_sediment_material_properties* seds,
                                                                            int num_seds )
 {
+
+    cout << "Entering here " << "gpm_plugin_api_set_sediment_material_properties" << endl;
     auto& sediment_map = get_process_wrapper( handle )->process->_sediments;
+
+
+
+
+
 
     for(int n : IntRange( 0, num_seds ))
     {
-        cout << endl << "id " << sediment_map[seds[n].id].id << endl;
-        cout << "name" << seds[n].name << endl;
-        cout << "porosity = " << seds[n].initial_porosity << endl;
-        cout << "density = " << seds[n].grain_density * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity << endl;
-
-
+        //cout << endl << "id " << sediment_map[seds[n].id].id << endl;
+        //cout << "name" << seds[n].name << endl;
+        //cout << "porosity = " << seds[n].initial_porosity << endl;
+        //cout << "density = " << seds[n].grain_density * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity << endl;
         if(sediment_map.find( seds[n].id ) != sediment_map.end( ))
         {
             sediment_map[seds[n].id].properties["POROSITY"] = seds[n].initial_porosity;
-            sediment_map[seds[n].id].properties["DENSITY"] = seds[n].grain_density;// * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity;
+            sediment_map[seds[n].id].properties["DENSITY"] = seds[n].grain_density * (1 - seds[n].initial_porosity) + 1.0 * seds[n].initial_porosity;
             sediment_map[seds[n].id].name = seds[n].name;
+        }
+        else
+        {
+            cout << "ERROR: SEDIMENT ID RECEIVED IS NOT PRESENT IN THE GEOMECHANICS TABLE!!" << endl;
         }
     }
 
+    std::vector<string> ids;
+    std::transform( begin( sediment_map ), end( sediment_map ), std::back_inserter( ids ),
+                    []( const pair<std::string, SedimentDescription>& p ) -> std::string {  return p.second.id; } );
 
-    //auto* const ptr = get_process_wrapper( handle );
-        //const auto the_materials = Slb::Exploration::Gpm::Api::make_sediment_materail_properties( seds, num_seds );
-        //ptr->process->set_materials( the_materials );
+    for(const auto& id : ids)
+    {
+        std::string name = sediment_map[id].name;
+        sediment_map[name] = sediment_map[id];
+    }
+
 }
 
 

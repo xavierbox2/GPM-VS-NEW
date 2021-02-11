@@ -42,6 +42,9 @@ public:
         int ncols = (int)model_def->num_columns, nrows = (int)model_def->num_rows;
         CoordinateMapping3D reference( axis1.normalize( ), axis2.normalize( ), axis3, { 0.0f,0.0f,0.0f } );
 
+        //
+        //CoordinateMapping3D reference( fVector3(1.0,0.0,0.0), fVector3(0.0,1.0,0.0), axis3, { 0.0f,0.0f,0.0f } );
+
         _visage_options->geometry( ) = StructuredGrid( ncols, nrows, 0, extent, reference );
         cout << _visage_options->geometry( ) << std::endl;
 

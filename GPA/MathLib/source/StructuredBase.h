@@ -26,7 +26,7 @@
 
 
 
- 
+
 using namespace std;
 
 class
@@ -50,7 +50,7 @@ public:
 
     const int DIMS{ 3 };
 
-    virtual ~StructuredBase( ) { ; }
+    virtual ~StructuredBase( ) = default;
 
     StructuredBase( ) = default;
 
@@ -171,43 +171,45 @@ public:
         return elemental_values;
     }
 
-    static std::vector<float>  elemental_to_nodal( int cols, int rows, int surfaces, const std::vector<float>& elemental_values )
+    static std::vector<float>  elemental_to_nodal( int node_cols, int node_rows, int node_surfaces, const std::vector<float>& elemental_values, float min_val = -1.0e15f, float max_val = 1.0e15f )
     {
         std::vector<float> nodal_values;
-        nodal_values.resize( (cols) * (rows) * (surfaces) );
-        std::vector<int> counter( (cols) * (rows) * (surfaces) );
+        nodal_values.resize( (node_cols) * (node_rows) * (node_surfaces) );
+        std::vector<int> node_values_counter( (node_cols) * (node_rows) * (node_surfaces) );
         std::fill( nodal_values.begin( ), nodal_values.end( ), 0.0f );
-        std::fill( counter.begin( ), counter.end( ), 0 );
+        std::fill( node_values_counter.begin( ), node_values_counter.end( ), 0 );
 
-        int cell = 0, aux = cols * rows;
+        int cell = 0, aux = node_cols * node_rows;
         float one_eight = 1.0f / 8.0f;
 
-        for(int k = 0; k < surfaces - 1; k++)
+        for(int k = 0; k < node_surfaces - 1; k++)
         {
-            for(int j = 0; j < rows - 1; j++)
+            for(int j = 0; j < node_rows - 1; j++)
             {
-                for(int i = 0; i < cols - 1; i++)
+                for(int i = 0; i < node_cols - 1; i++)
                 {
                     //top face and bottom faces
-                    int n1 = k * (cols * rows) + j * cols + i; //lower left node of cell
+                    int n1 = k * (node_cols * node_rows) + j * node_cols + i; //lower left node of cell
                     float value = elemental_values.at( cell );
 
-                    int indices[] = { n1, n1 + 1, n1 + cols, n1 + 1 + cols };
-                    for(int n = 0; n < 4; n++)
+                    if((value > min_val) && (value < max_val))
                     {
-                        nodal_values[(indices[n])] += value;
-                        counter[indices[n]] += 1;
-                        indices[n] += aux;
-                        nodal_values[(indices[n])] += value;
-                        counter[indices[n]] += 1;
+                        int indices[] = { n1, n1 + 1, n1 + node_cols, n1 + 1 + node_cols };
+                        for(int n = 0; n < 4; n++)
+                        {
+                            nodal_values[(indices[n])] += value;
+                            node_values_counter[indices[n]] += 1;
+                            indices[n] += aux;
+                            nodal_values[(indices[n])] += value;
+                            node_values_counter[indices[n]] += 1;
+                        }
                     }
-
                     cell += 1;
                 }
             }
         }//k
 
-        for(int n = 0; n < nodal_values.size( ); n++) nodal_values[n] /= (counter[n]);
+        for(int n = 0; n < nodal_values.size( ); n++) nodal_values[n] /= (node_values_counter[n]);
 
         return nodal_values;
     }

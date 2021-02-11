@@ -13,7 +13,7 @@
 //TODO: Enforce no-white space anywhere in commands or hashes names
 //TODO: SetOrReplaceHash("HEADER", "Ndisplacements  ", std::to_string(boundaryNodes));
 //TODO:SetOrReplaceHash("HEADER", "Nconstraints  ", "0");
-//TODO: if the value is a comma separated string, then each is a value this would fix the wirdness in LOADSTEP
+//TODO: if the value is a comma separated std::string, then each is a value this would fix the wirdness in LOADSTEP
 
 //#include <windows.h>
 #include <iostream>
@@ -48,6 +48,8 @@ public:
 
         configure_tidy_name( );
 
+        configure_default_status( );
+
         configure_default_header( );
 
         configure_default_solver_section( );
@@ -57,35 +59,35 @@ public:
         configure_default_structured( );
 
         set_gravity( true );
-        string year = std::to_string( 1900 + step( ) );
-        string date = std::to_string( 1/*step()*/ ) + " \n01/01/" + year + " 00:00:00.000";
+        std::string year = std::to_string( 1900 + step( ) );
+        std::string date = std::to_string( 1/*step()*/ ) + " \n01/01/" + year + " 00:00:00.000";
         set_command( "PRINTDATES", date );
 
         //PATCH
         sea_level( ) = -999.0f; //if negative, there will be no edge-loads.
         sea_water_density( ) = 1000.00f;
-        pinchout_tolerance( ) = 0.001f;
+        pinchout_tolerance( ) = 0.005f;
 
         configure_default_restart( );
 
         configure_default_results( );
 
         for(int d = 0; d < NUMBERBOUNDARYCONDITIONS; d++)
-            b_conditions[d] = NULL;//i, j, ktop, kbottom
+            b_conditions[d] = nullptr;//i, j, ktop, kbottom
 
-        _enforce_elastic = false; 
+        //_enforce_elastic = false;
     }
 
-    ~VisageDeckSimulationOptions( )
+    virtual ~VisageDeckSimulationOptions( )
     {
         delete_commands( );
         for(int d = 0; d < NUMBERBOUNDARYCONDITIONS; d++)
-        if(b_conditions[d] != NULL) delete b_conditions[d];
+        if(b_conditions[d] != nullptr) delete b_conditions[d];
     }
 
-    bool _enforce_elastic;
-    bool& enforce_elastic()  { return _enforce_elastic;}
-    bool enforce_elastic( ) const { return _enforce_elastic; }
+   /* bool _enforce_elastic;
+    bool& enforce_elastic( ) { return _enforce_elastic; }
+    bool enforce_elastic( ) const { return _enforce_elastic; }*/
 
 
     void set_gravity( bool value ) {
@@ -112,12 +114,15 @@ public:
     float pinchout_tolerance( ) const { return _pinchout_tolerance; }
     float& pinchout_tolerance( ) { return _pinchout_tolerance; }
 
-    bool _auto_config_plastic;
-    bool auto_config_plasticity( ) const { return _auto_config_plastic; }
-    bool& auto_config_plasticity( ) { return _auto_config_plastic; }
+    
+    bool _auto_config_solver;
+    bool auto_config_solver( ) const { return _auto_config_solver; }
+    bool& auto_config_solver( ) { return _auto_config_solver; }
 
     float sea_water_density( ) const { return _sea_water_density; }
     float& sea_water_density( ) { return _sea_water_density; }
+
+   
 
     void update_step( int new_step )
     {
@@ -126,10 +131,10 @@ public:
     }
     void update_step( );
 
-    string to_string( )
+    std::string to_string( )
     {
         update_step( );
-        string s = "";
+        std::string s = "";
         for(auto it = commands.begin( ); it != commands.end( ); ++it)
         {
             s += it->second->to_string( ) + "\n";
@@ -139,13 +144,13 @@ public:
         s += end.to_string( );
 
         //s += "\n";
-        //s += _geometry.to_string();
+        //s += _geometry.std::to_string();
         //s += "\n";
 
         return s;
     }
 
-    string to_string( int time_step ) {
+    std::string to_string( int time_step ) {
         step( ) = time_step;
         return this->to_string( );
     }
@@ -154,20 +159,23 @@ public:
 
     bool use_tables( ) const { return _use_tables; }
 
-    void add_table( int index,  const Table &table )
+    void add_table( int index,  const Table& table )
     {
         _tables[index] = table;
     }
-    void clear_tables()
+    void clear_tables( )
     {
-        _tables.clear();
+        _tables.clear( );
     }
 
+ 
     bool& use_tables( ) { return _use_tables; }
 
     map<int, Table> _tables;
 
-    void set_boundary_condition( IBoundaryCondition *b )
+
+
+    void set_boundary_condition( IBoundaryCondition* b )
     {
         int dir = b->dir( );
         b_conditions[dir] = b;
@@ -182,19 +190,10 @@ public:
 
     StructuredGrid _geometry;
 
-    Structured_Geometry_Size geometry_size( )const 
+    Structured_Geometry_Size geometry_size( )const
     {
         return Structured_Geometry_Size( _geometry.ncols( ), _geometry.nrows( ), _geometry.nsurfaces( ) );
     }
-
-    //ArrayData& properties( ) { return _mech_properties; }
-    //ArrayData _mech_properties;
-
-
-    //set(string command, bool value )
-    //{
-    //}
-
 
     private:
 
@@ -231,6 +230,8 @@ public:
         void configure_multistep_restart( );
         void configure_default_results( );
         void configure_default_echo( );
+        void configure_default_status( );
+        
 };
 
 typedef VisageDeckSimulationOptions visage_deck_simulation_options;

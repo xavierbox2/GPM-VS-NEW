@@ -38,8 +38,6 @@ to store/modify/query non-uniform z coordinates of the nodes.
 This is the kind of grid that matches gpm data structure
 */
 
-
-
 class
 #ifdef ISDLL
     VISAGEDECKWRITEC_API
@@ -48,9 +46,9 @@ StructuredGrid: public StructuredBase, public IGridGeometry
 {
 public:
 
-virtual~StructuredGrid( ) {}
+virtual ~StructuredGrid( ) = default;
 
-StructuredGrid * operator->( ) { return this; }
+StructuredGrid* operator->( ) { return this; }
 
 StructuredGrid( ) = default;
 
@@ -97,7 +95,7 @@ std::vector<float>& z = _zvalues[surface_index];
 std::copy( values, values + z.size( ), _zvalues[surface_index].begin( ) );
 }
 
-void displace_all_nodes( std::vector<float> & displacement );
+void displace_all_nodes( const std::vector<float> & displacement );
 
 void set_num_surfaces( int nz )
 {
@@ -125,25 +123,21 @@ std::vector<float> get_local_depths( int nk ) const
 return _zvalues[nk];
 }
 
-virtual std::vector<float> get_depths_from_top( ) const 
+virtual std::vector<float> get_depths_from_top( ) const
 {
+    const std::vector<float>& model_top = _zvalues[nsurfaces( ) - 1];
 
-    const std::vector<float> &model_top = _zvalues[ nsurfaces()-1 ];
-
-    std::vector<float> ret( total_nodes() );
-    int i = 0; 
-    for(int k = 0; k < _zvalues.size(); k++ )
+    std::vector<float> ret( total_nodes( ) );
+    int i = 0;
+    for(int k = 0; k < _zvalues.size( ); k++)
     {
         const std::vector<float>& s = _zvalues[k];
-        for( int n =0; n < s.size(); n++)
+        for(int n = 0; n < s.size( ); n++)
         ret[i++] = abs( model_top[n] - s[n] );
     }
 
     return ret;
-
 }
-
-
 
 StructuredSurface get_structured_surface( int index )
 {
@@ -161,13 +155,11 @@ tuple< vector<float>::const_iterator, vector<float>::const_iterator> surface_ran
 return make_tuple( cbegin_surface( k1 ), cend_surface( k1 ) );
 }
 
-
 vector<float>::const_iterator cbegin_surface( int k ) const { return _zvalues.at( k ).cbegin( ); }
 
 vector<float>::iterator end_surface( int k ) { return _zvalues[k].end( ); }
 
 vector<float>::const_iterator cend_surface( int k ) const { return _zvalues.at( k ).cend( ); }
-
 
 protected:
 
@@ -178,12 +170,10 @@ void add_surfaces_if_needed( int surface_index )
  _zvalues.push_back( std::vector<float>( nodes_per_layer( ) ) );
  _node_count[2] = (int)_zvalues.size( );
  }
-
 }
 
 std::vector<std::vector<float>> _zvalues;
 };
-
 
 class
 #ifdef ISDLL
@@ -195,20 +185,11 @@ public:
 
 virtual ~StructuredDeformableGrid( ) {}
 
-void add_displacements( const std::vector<float> & disp, int dir )
-{
-throw exception( "Not implemented yet [StructuredDeformableGrid::add_displacements( const std::vector<float> &disp, int dir )] " );
-}
-
  std::vector<float> get_local_coordinates( ) const { return vector<float>( ); }
 
  std::vector<float> get_local_coordinates( int surface_index ) const { return vector<float>( ); }
 
  void get_local_coordinates_vector( int surface_index, std::vector<fVector3> & ret ) const { ; }
-
- std::vector<fVector3> get_local_coordinates_vector( int surface_index ) const { return vector<fVector3>( ); }
-
- std::vector<int> get_height_overlaps( int surface1, int surface2, float tolerance ) const { return vector<int>( ); }
 
  void brute_force_get_pinched_elements( float pinchout_tolerance, vector<int> & element_pinched_count, map<int, int> & node_connections ) { ; }
 
@@ -216,10 +197,10 @@ void operator = ( StructuredDeformableGrid & g ) { ; }
 
 protected:
 
-//cummulated displacements
- std::vector<std::vector<float>> _xdisp;
- std::vector<std::vector<float>> _ydisp;
- std::vector<std::vector<float>> _zdisp;
+////cummulated displacements
+// std::vector<std::vector<float>> _xdisp;
+// std::vector<std::vector<float>> _ydisp;
+// std::vector<std::vector<float>> _zdisp;
 };
 
 #endif

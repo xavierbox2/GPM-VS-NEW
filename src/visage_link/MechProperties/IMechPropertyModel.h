@@ -15,10 +15,9 @@ class IMechanicalPropertiesInitializer
 {
 
 
-protected:
-
-
 public:
+
+    virtual ~IMechanicalPropertiesInitializer( ) = default;
 
     virtual vector<float> get_values( const gpm_attribute& att, int k1 = 0, int k2 = -1 )
     {
@@ -32,7 +31,7 @@ public:
     }
 
     //based on total strain
-    virtual void update_porosity( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays )
+    virtual void update_porosity(  map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays )
     {
         //the total volumetric strain: assume it is cummulative.
         vector<float>& exx = data_arrays.get_array( "STRAINXX" );
@@ -58,6 +57,29 @@ public:
 
     }
 
+    //creates and populates arrays with the name "Initxx" with initial properties given to them
+    virtual void create_init_arrays( const vector<string> &names, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
+    {
+        auto [vs_cols, vs_rows, vs_surfaces, vs_total_nodes, vs_total_elements] = options->geometry( ).get_geometry_description( );
+        int offset = (vs_cols - 1) * (vs_rows - 1) * (old_nsurf > 0 ? (old_nsurf - 1) : 0);
+
+           //we need to keep a copy of the intial stiffness and porosity, this lambda will create them
+        auto make_initial = [&data_arrays, offset]( string variable_name )
+        {
+            auto& intitial = data_arrays["Init" + variable_name];
+            auto& values = data_arrays[variable_name];
+            intitial.resize( values.size( ) );
+            copy( begin( values ) + offset, end( values ), begin( intitial ) + offset );
+        };
+
+        for( std::string name : names )
+        {
+            make_initial( name );
+        }
+      
+
+    }
+
     /*
     creates an elemental property for each property in the sediments table   +  InitialStiffness +  InitialPorosity
     InitialPorosity  comes from GPM as a sediment-volume-weighted property
@@ -66,34 +88,26 @@ public:
     virtual void update_initial_mech_props( const attr_lookup_type& atts, const map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, int old_nsurf, int new_nsurf )
     {
         if(old_nsurf == new_nsurf) return;
-
-        std::cout<<"Mech props 1"<<std::endl;
-
+        
         vector<string> sed_keys = {}; //SED1,SED2,...SEDN  
         for_each( cbegin( atts ), cend( atts ), [&sed_keys, key = "SED"]( const auto& att )
         {if(att.first.find( key ) != std::string::npos) sed_keys.push_back( att.first ); } );
-
-        std::cout << "Mech props 2" << std::endl;
+         
 
         set<string> prop_names = { sediments.at( sed_keys[0] ).property_names( ) }; //"POROSITY", "DENSITY", "YOUNGMOD",......etc...")
         auto [vs_cols, vs_rows, vs_surfaces, vs_total_nodes, vs_total_elements] = options->geometry( ).get_geometry_description( );
         int offset = (vs_cols - 1) * (vs_rows - 1) * (old_nsurf > 0 ? (old_nsurf - 1) : 0);
-
-        std::cout << "Mech props 3" << std::endl;
+         
 
         int tot_nodes = (atts.at( "TOP" ).size( ) * atts.at( "TOP" )[0].num_cols( ) * atts.at( "TOP" )[0].num_rows( ));
         vector<float> value( tot_nodes );
-
-        std::cout << "Mech props 4" << std::endl;
+         
 
         /*
         properties weighted by the volume of sediments
         */
         for(string prop : prop_names)  // for each sediment-related property: POROSITY, STIFFNESS, etc...
         {
-
-            std::cout << "Mech props 1  " << prop<<std::endl;
-
             //get the weighted volume average 
             fill( value.begin( ), value.end( ), 0.0f );
             for(string key : sed_keys)
@@ -112,9 +126,7 @@ public:
                     }
                 }
             }
-
-            std::cout << "Mech props 5" << prop << std::endl;
-
+             
             //value is the sediment-volume-weighted average of property = prop (nodal in gpm) porosity, stiffness,etc. whatever in the outer loop
             auto& data_array = data_arrays[prop];
             vector<float> ele_values = options->geometry( ).nodal_to_elemental( value );
@@ -123,43 +135,28 @@ public:
                 data_array.resize( vs_total_elements, 0.0f ); //initial sediment-related property
             }
 
-            std::cout << "Mech props 6" << prop<<std::endl;
-
             copy( ele_values.begin( ) + offset, ele_values.end( ), data_array.begin( ) + offset );
         }
 
 
-        std::cout << "Mech props 7 " << std::endl;
+        ////we need to keep a copy of the intial stiffness and porosity, this lambda will create them
+        //auto make_initial = [&data_arrays, offset]( string variable_name )
+        //{
+        //    auto& intitial = data_arrays["Init" + variable_name];
+        //    auto& values = data_arrays[variable_name];
+        //    intitial.resize( values.size( ) );
+        //    copy( begin( values ) + offset, end( values ), begin( intitial ) + offset );
+        //};
 
-
-        //we need to keep a copy of the intial stiffness and porosity, this lambda will create them
-        auto make_initial = [&data_arrays, offset]( string variable_name )
-        {
-            auto& intitial = data_arrays["Init" + variable_name];
-            auto& values = data_arrays[variable_name];
-            intitial.resize( values.size( ) );
-            copy( begin( values ) + offset, end( values ), begin( intitial ) + offset );
-        };
-
-        std::cout << "Mech props 8 " << std::endl;
-
-
-
-        make_initial( WellKnownVisageNames::ResultsArrayNames::Stiffness );
-
-        std::cout << "Mech props 9 " << std::endl;
-
-        make_initial( WellKnownVisageNames::ResultsArrayNames::Porosity );
-
-        std::cout << "Mech props 10 " << std::endl;
-
-
-    }
+        //make_initial( WellKnownVisageNames::ResultsArrayNames::Stiffness );
+        //make_initial( WellKnownVisageNames::ResultsArrayNames::Porosity );
+        //make_initial( WellKnownVisageNames::ResultsArrayNames::Cohesion );
+   }
 
     virtual void update_compacted_props( const attr_lookup_type& atts, map<string, SedimentDescription>& sediments, VisageDeckSimulationOptions& options, ArrayData& data_arrays, const Table& plastic_multiplier ) = 0;
 
-    ~IMechanicalPropertiesInitializer( ) {}
-
+    
+ 
 
 
 };

@@ -15,7 +15,7 @@
 #define VISAGEDECKWRITEC_API __declspec(dllimport)
 #endif
 
-using namespace std;
+//using namespace std;
 
 class
 #ifdef ISDLL
@@ -27,18 +27,18 @@ public:
 
     Instruction( Instruction& k ) = default;
 
-    Instruction( std::string preffix = "*", string value = "", string name = "" )
-        : preffix( preffix ), value( value ), name( name ) {
+    Instruction( std::string name = "", std::string value = "", std::string preffix = "*" ) :name( name ), value( value ), preffix( preffix )
+    {
         ;
     }
 
-    string preffix, value, name;
+    std::string preffix, value, name;
 
-    string to_string( )
+    std::string to_string( )
     {
         if(name.empty( )) return "";
 
-        string s = preffix + name + "\n";
+        std::string s = preffix + name + "\n";
         if(!value.empty( ))            //the values printed below the *xxxx
         {
             s += value;
@@ -52,30 +52,33 @@ class
 #ifdef ISDLL
     VISAGEDECKWRITEC_API
 #endif
-InstructionBlock: Instruction
+InstructionBlock: public Instruction
 {
 public:
 
     //copy constructo;
     InstructionBlock( InstructionBlock & k )
     {
-        Name = k.Name; Value = k.Value; Preffix = k.Preffix;
+        name = k.name;
+        value = k.value;
+        preffix = k.preffix;
         replace_hashes( &k.hashedValues );
     }
 
     //default constructor
-    InstructionBlock( string name = "", string value = "", string preffix = "*", unordered_map<string, string> * hashes = nullptr ) :Instruction( name, value, preffix )
+    InstructionBlock( std::string iname = "", std::string value = "", std::string preffix = "*", std::unordered_map<std::string, std::string> * hashes = nullptr ) :Instruction( iname, value, preffix )
     {
-        Value = value; Preffix = preffix; Name = name;
-        replace_hashes( hashes );
+       replace_hashes( hashes );
     }
 
-    void set_replace_instruction( string name, string value )
+    void set_replace_instruction( std::string name, std::string value )
     {
         hashedValues[name] = value;
     }
 
-    void set_instruction( unordered_map<string, string> * hashes )
+ 
+
+    void set_instruction( std::unordered_map<std::string, std::string> * hashes )
     {
         if((hashes == nullptr) || (hashes->empty( ))) return;
         for(auto it = hashes->begin( ); it != hashes->end( ); ++it)
@@ -83,23 +86,23 @@ public:
     }
 
 
-    void delete_instruction( string name )
+    void delete_instruction( std::string name )
     {
-        unordered_map<string, string>::iterator it = hashedValues.find( name );
+        std::unordered_map<std::string, std::string>::iterator it = hashedValues.find( name );
         if(it != hashedValues.end( ))
             hashedValues.erase( it );
     }
 
     //the mii writter depends on this
-    string to_string( ) const
+    std::string to_string( ) const
     {
-        if(Name.empty( )) return "";
+        if(name.empty( )) return "";
 
-        string s = Preffix + Name + "\n";
-        if(!(Value.empty( )))            //the values printed below the *xxxx
+        std::string s = preffix + name + "\n";
+        if(!(value.empty( )))            //the values printed below the *xxxx
         {
-            //if the value is a comma separated string, then each is a value
-            s += Value;
+            //if the value is a comma separated std::string, then each is a value
+            s += value;
             s += "\n";
         }
 
@@ -113,18 +116,38 @@ public:
         return s;
     }
 
-    bool has_hash( string  s ) const //, bool ignorecase = true ) const
-    {   return hashedValues.find( s ) == hashedValues.end( ) ? false : true;
+    bool has_hash( std::string  s ) const //, bool ignorecase = true ) const
+    {
+    return hashedValues.find( s ) == hashedValues.end( ) ? false : true;
     }
 
-    std::unordered_map<string, string> hashedValues;
-    string Name, Value, Preffix;
+    std::string get_hash( std::string  s ) const
+    {
+        return  has_hash( s ) ? hashedValues.at( s ) : "";
+    }
+    std::string at ( std::string s ) const
+    {
+    return  has_hash( s ) ? hashedValues.at( s ) : "";
+    }
+    std::string operator[]( std::string s) const 
+    {
+    return  has_hash( s ) ? hashedValues.at( s ) : "";
+    }
+    std::string& operator[]( std::string s ) 
+    {
+    return hashedValues[ s ] ;
+    }
+
+
+
+std::unordered_map<std::string, std::string> hashedValues;
+//std::string Name, Value, Preffix;
 
 private:
 
 
 
-    void replace_hashes( unordered_map<string, string>* hashes )
+    void replace_hashes( std::unordered_map<std::string, std::string>* hashes )
     {
         if(!(hashedValues.empty( )))
             hashedValues.clear( );
@@ -133,7 +156,7 @@ private:
             return;
 
         for(auto it = hashes->begin( ); it != hashes->end( ); ++it)
-            hashedValues.insert( std::pair<string, string>( (*it).first, (*it).second ) );
+            hashedValues.insert( std::pair<std::string, std::string>( (*it).first, (*it).second ) );
     }
 
 
@@ -147,7 +170,7 @@ class
 {
 public:
 
-    SimulationOptions( string name, int step ) : _model_name( name ), _step( step ) { ; }
+    SimulationOptions( std::string name, int step ) : _model_name( name ), _step( step ) { ; }
 
     SimulationOptions* operator->( ) { return this; }
 
@@ -156,30 +179,62 @@ public:
         delete_commands( );
     }
 
-    virtual string to_string( ) = 0;
+    virtual std::string to_string( ) = 0;
 
-    virtual string to_string( int time_step ) = 0;
+    virtual std::string to_string( int time_step ) = 0;
 
-    virtual string model_name( ) const { return _model_name; }
+    virtual std::string model_name( ) const { return _model_name; }
 
-    virtual string& model_name( ) { return _model_name; }
+    virtual std::string& model_name( ) { return _model_name; }
 
     virtual std::string path( ) const { return _path; }
 
     virtual std::string& path( ) { return _path; }
 
-    virtual bool set_value( string name, string value );
+    virtual bool set_value( std::string name, std::string value );
 
-    virtual bool contains( string  s ) const;
+    virtual bool contains( std::string  s ) const;
 
-    virtual InstructionBlock* set_command( string name, string value = "", unordered_map<string, string>* hashes = nullptr );
+    virtual InstructionBlock* set_command( std::string name, std::string value = "", std::unordered_map<std::string, std::string>* hashes = nullptr );
 
-    virtual InstructionBlock* get_command( std::string name );
+    virtual InstructionBlock* get_command( std::string name )
+    {
+        remove_space( name );
 
-    virtual std::vector< InstructionBlock* >  get_commands( ) const;
+        auto it = commands.find( name );
+        if(it != commands.end( ))
+            return  it->second;
+
+        return nullptr;
+    }
+
+    virtual std::string get_hash( std::string command, std::string hash_name )
+    {
+        if(InstructionBlock* i = get_command( command ); i != nullptr)
+        {
+            return i->get_hash( hash_name );
+        }
+        return "";
+    }
+
+    virtual std::vector< InstructionBlock* > get_commands( ) const
+    {
+        std::vector< InstructionBlock* > items;
+        //copy( commands.begin( ), commands.end( ), back_inserter( co ) );
+        //return co;
+
+        for(std::unordered_map<std::string, InstructionBlock*>::const_iterator it = commands.cbegin( ); it != commands.cend( ); ++it)
+        {
+            items.push_back( it->second );
+        }
+
+        return items;
+    }
+
+
 
     template<typename T>
-    void set_instruction( string commandName, string hashName, T hashValue )
+    void set_instruction( std::string commandName, std::string hashName, T hashValue )
     {
         remove_space( commandName );
         remove_space( hashName );
@@ -187,13 +242,13 @@ public:
     }
 
     //hashes are options inside the asterisks/commands. Both can also have values. They look as hashes and asterisks in the miis
-    InstructionBlock* set_replace_instruction( string commandName, string hashName, string hashValue );
+    InstructionBlock* set_replace_instruction( std::string commandName, std::string hashName, std::string hashValue );
 
-    virtual void delete_command( string name );
+    virtual void delete_command( std::string name );
 
-    virtual void delete_instruction( string command, string name );
+    virtual void delete_instruction( std::string command, std::string name );
 
-    virtual void use_options( unordered_map<string, string> options );
+    virtual void use_options( std::unordered_map<std::string, std::string> options );
 
     virtual int& step( ) { return _step; }
 
@@ -203,11 +258,11 @@ protected:
 
     int _step;
     std::string _model_name, _path;
-    unordered_map<string, InstructionBlock*> commands;
+    std::unordered_map<std::string, InstructionBlock*> commands;
 
     void delete_commands( )
     {
-        for(unordered_map<string, InstructionBlock*>::iterator it = commands.begin( ); it != commands.end( ); ++it)
+        for(std::unordered_map<std::string, InstructionBlock*>::iterator it = commands.begin( ); it != commands.end( ); ++it)
             delete it->second;
 
         commands.clear( );
